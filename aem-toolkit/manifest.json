@@ -1,0 +1,58 @@
+{
+  "manifest_version": 3,
+  "name": "DSY - Digital Samsung Yard",
+  "short_name": "DSY",
+  "version": "0.27.6",
+  "description": "Operations on AEM author instances, run from a side panel next to the page you are working on.",
+  "minimum_chrome_version": "114",
+
+  "permissions": [
+    "storage",
+    "sidePanel",
+    "scripting",
+    "tabs"
+  ],
+
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+
+  "background": {
+    "service_worker": "src/background/service-worker.js",
+    "type": "module"
+  },
+
+  "side_panel": {
+    "default_path": "src/panel/panel.html"
+  },
+
+  "options_page": "src/options/options.html",
+
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+
+  "action": {
+    "default_title": "DSY - Digital Samsung Yard",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
+  },
+
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/core/*.js",
+        "src/content/*.js",
+        "src/features/*.js",
+        "src/features/*/*.js"
+      ],
+      "matches": ["http://*/*", "https://*/*"]
+    }
+  ]
+}

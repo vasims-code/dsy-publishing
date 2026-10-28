@@ -1,0 +1,259 @@
+{
+  "version": 20261022,
+  "settings": {
+    "backupFolder": "india/backup",
+    "checkTemplateAvailability": true,
+    "featureVersions": true,
+    "marketingTemplate": "/conf/consumer/settings/wcm/templates/page-marketing",
+    "origins": [
+      "https://p6-ap-author.samsung.com",
+      "https://p6-eu-author.samsung.com",
+      "https://p6-us-author.samsung.com"
+    ],
+    "rootDepth": 3,
+    "transferCopyAssets": true,
+    "transferOverwriteAssets": false,
+    "transferPreserve": "",
+    "upsertCopyAssets": true,
+    "upsertHosts": "",
+    "upsertKeepAtDest": "hreflangGroup",
+    "upsertOverwriteAssets": false,
+    "upsertReorder": true,
+    "upsertRewriteShop": false,
+    "upsertSharedSites": "global",
+    "upsertStripReplication": true,
+    "upsertVersionFirst": false,
+    "verifyShallow": true
+  },
+  "copyDeckAdded": [
+    {
+      "component": "ho-g-showcase-card",
+      "prop": "pcDesc",
+      "group": "copy"
+    },
+    {
+      "component": "ho-g-showcase-card",
+      "prop": "moText",
+      "group": "copy"
+    },
+    {
+      "component": "ho-g-showcase-card",
+      "prop": "moDesc",
+      "group": "copy"
+    },
+    {
+      "component": "ho-g-showcase-card",
+      "prop": "pcText",
+      "group": "copy"
+    },
+    {
+      "component": "pd-g-feature-benefit",
+      "prop": "videoLinkTitle",
+      "group": "a11y"
+    },
+    {
+      "component": "cm-g-kv-tab-container",
+      "prop": "tabText",
+      "group": "copy"
+    },
+    {
+      "component": "pd-g-feature-benefit",
+      "prop": "imageIndicatorText",
+      "group": "copy"
+    },
+    {
+      "component": "pd-g-offer-product-card-list",
+      "prop": "tabText",
+      "group": "copy"
+    },
+    {
+      "component": "cm-g-local-benefit",
+      "prop": "discription",
+      "group": "copy"
+    },
+    {
+      "component": "pd-g-header-carousel",
+      "prop": "carouselImageMobileAlternativeText",
+      "group": "alt"
+    },
+    {
+      "component": "pd-g-header-carousel",
+      "prop": "carouselImageAlternativeText",
+      "group": "alt"
+    },
+    {
+      "component": "pd-g-header-carousel",
+      "prop": "carouselHeadlineText",
+      "group": "copy"
+    },
+    {
+      "component": "of-g-feature-benefit-card",
+      "prop": "indicatorText",
+      "group": "copy"
+    },
+    {
+      "component": "of-g-feature-benefit-card",
+      "prop": "linkText",
+      "group": "cta"
+    },
+    {
+      "component": "cm-g-tab-container-single-menu",
+      "prop": "tabText",
+      "group": "copy"
+    },
+    {
+      "component": "pd-g-feature-benefit-column-carousel",
+      "prop": "eyebrowText",
+      "group": "copy"
+    },
+    {
+      "component": "su-g-accordion-faqs",
+      "prop": "title",
+      "group": "copy"
+    },
+    {
+      "component": "ho-g-hero-kv-home",
+      "prop": "hiddenAltHeadlineText",
+      "group": "alt"
+    },
+    {
+      "component": "ho-g-hero-kv-home",
+      "prop": "imageAltText",
+      "group": "alt"
+    },
+    {
+      "component": "ho-g-hero-kv-home",
+      "prop": "desktopDescription",
+      "group": "copy"
+    },
+    {
+      "component": "ho-g-hero-kv-home",
+      "prop": "videoAltText",
+      "group": "alt"
+    },
+    {
+      "component": "ho-g-hero-kv-home",
+      "prop": "mobileDescription",
+      "group": "copy"
+    },
+    {
+      "component": "ho-g-hero-kv-home",
+      "prop": "linkText",
+      "group": "cta"
+    },
+    {
+      "component": "ho-g-feature-kv",
+      "prop": "linkTitle2",
+      "group": "a11y"
+    },
+    {
+      "component": "ho-g-feature-kv",
+      "prop": "text2",
+      "group": "copy"
+    },
+    {
+      "component": "ho-g-feature-kv",
+      "prop": "videoAltText",
+      "group": "alt"
+    },
+    {
+      "component": "ho-g-feature-kv",
+      "prop": "linkTitle3",
+      "group": "a11y"
+    },
+    {
+      "component": "ho-g-feature-kv",
+      "prop": "text3",
+      "group": "copy"
+    },
+    {
+      "component": "ho-g-feature-kv",
+      "prop": "hiddenAltHeadlineText",
+      "group": "alt"
+    },
+    {
+      "component": "ho-g-explore-carousel",
+      "prop": "title",
+      "group": "copy"
+    },
+    {
+      "component": "ho-g-home-kv-carousel",
+      "prop": "imageMobileAltText",
+      "group": "alt"
+    },
+    {
+      "component": "ho-g-home-kv-carousel",
+      "prop": "moDescription",
+      "group": "copy"
+    },
+    {
+      "component": "ho-g-home-kv-carousel",
+      "prop": "imageAltText",
+      "group": "alt"
+    },
+    {
+      "component": "ho-g-home-kv-carousel",
+      "prop": "moHeadlineText",
+      "group": "copy"
+    },
+    {
+      "component": "ho-g-home-kv-carousel",
+      "prop": "eyebrowText",
+      "group": "copy"
+    },
+    {
+      "component": "pd-g-feature-benefit-column-carousel",
+      "prop": "indicatorText",
+      "group": "copy"
+    },
+    {
+      "component": "pd-g-product-key-features-and-ratings",
+      "prop": "eyebrowText",
+      "group": "copy"
+    },
+    {
+      "component": "pd-g-personalized-lifestyle-curator",
+      "prop": "beforeDescription",
+      "group": "copy"
+    },
+    {
+      "component": "pd-g-personalized-lifestyle-curator",
+      "prop": "afterDescription",
+      "group": "copy"
+    },
+    {
+      "component": "ho-g-text-block-home",
+      "prop": "linkText",
+      "group": "cta"
+    },
+    {
+      "component": "cm-g-discover-column-new",
+      "prop": "linkText",
+      "group": "cta"
+    },
+    {
+      "component": "cm-g-discover-column-new",
+      "prop": "mobileIndicatorText",
+      "group": "copy"
+    },
+    {
+      "component": "ho-g-home-search",
+      "prop": "hintText",
+      "group": "copy"
+    }
+  ],
+  "copyDeckIgnored": [
+    {
+      "component": "pd-g-feature-benefit",
+      "prop": "videoId"
+    },
+    {
+      "component": "cm-g-tab-container-single-menu",
+      "prop": "componentId"
+    },
+    {
+      "component": "cm-g-tab-container-single-menu",
+      "prop": "tabId"
+    }
+  ]
+}

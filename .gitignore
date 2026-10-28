@@ -1,0 +1,12 @@
+node_modules/
+dist/
+release/
+build/.icon-ico/
+aem-browser/build/win-unpacked/
+*.zip
+*.exe
+*.blockmap
+_static-content-work/
+.claude/
+*.xlsx
+*.csv

@@ -1,0 +1,304 @@
+{
+  "ogImageReference": "https://www.samsung.com/etc.clientlibs/samsung/clientlibs/consumer/global/clientlib-common/resources/images/logo-square-letter.png",
+  "twitterTitle": "Buy Smart TVs | OLED, QLED & Neo QLED TVs | Samsung South Africa",
+  "redirectTargetForward": "",
+  "keywords": "smart TV, TV, TVs, samsung qled, smart TV specials, android TV, game TV, smart TV price, 4k TV, curved screen TV",
+  "ogTitle": "Buy Smart TVs | OLED, QLED & Neo QLED TVs | Samsung South Africa",
+  "sling:resourceType": "samsung/components/structure/consumer/global/page-pcd",
+  "jcr:title": "Buy Smart TVs | OLED, QLED & Neo QLED TVs",
+  "jcr:uuid": "2a62cf9c-97d7-47ec-bcb1-096643ae9231",
+  "productGroupCodeName": "Television",
+  "ogType": "website",
+  "cq:template": "/conf/consumer/settings/wcm/templates/page-pcd",
+  "englishTitle": "TVs",
+  "twitterSite": "@SamsungSA",
+  "jcr:created": "Tue Oct 27 2020 02:07:00 GMT+0900",
+  "canonical": "https://www.samsung.com/za/tvs/",
+  "titleOption": "B",
+  "hreflangGroup": "pcd-vd-01",
+  "twitterDescription": "Explore the latest Samsung Smart TVs. Compare models, find the best prices, and enjoy exclusive deals and 0% finance only with Samsung South Africa.",
+  "cq:lastModified": "Tue Sep 22 2026 02:22:41 GMT+0900",
+  "localTitle": "TVs",
+  "jcr:primaryType": "cq:PageContent",
+  "jcr:lockOwner": "admin",
+  "description": "Explore the latest Samsung Smart TVs. Compare models, find the best prices, and enjoy exclusive deals and 0% finance only with Samsung South Africa.",
+  "publishedDateByWorkflow": "05/20/2022 19:59:035",
+  "disclaimer": "* Key features may different from Key Spec.\n\n5. Evolution Kit sold separately. Please check <a href=\"/za/\" target=\"_self\">www.samsung.com </a> for more details before purchasing the Evolution Kit.\n",
+  "memoryDescription": "",
+  "ogDescription": "Explore the latest Samsung Smart TVs. Compare models, find the best prices, and enjoy exclusive deals and 0% finance only with Samsung South Africa.",
+  "pageTrack": "product category detail",
+  "jcr:mixinTypes": ["mix:versionable", "mix:lockable"],
+  "root": {
+    "sling:resourceType": "wcm/foundation/components/responsivegrid",
+    "jcr:primaryType": "nt:unstructured",
+    "responsivegrid": {
+      "sling:resourceType": "wcm/foundation/components/responsivegrid",
+      "jcr:primaryType": "nt:unstructured",
+      "pd_g_feature_benefit": {
+        "sling:resourceType": "samsung/components/content/consumer/global/product/pd-g-feature-benefit",
+        "headlineTextSize1": "large",
+        "paddingBottom": " padding-bottom--0",
+        "imageDesktopImageRef": "/content/dam/samsung/za/tvs/18-09-26/2026-tv-pcd-f03-hero-pc.jpg",
+        "textType": "1set",
+        "imageAlternativeText": "Five types of Samsung TVs with different abstract designs on screen are lined up. Samsung Vision AI and 20 Years Global No.1 TV logo.",
+        "desktopLayout": "s-image-bottom",
+        "description1Size": "large",
+        "componentTheme": " bg-white",
+        "description": "Explore Samsung’s latest TV lineup, including Micro RGB, OLED, Neo QLED, Mini LED, QLED, Crystal UHD, and lifestyle TVs such as The Frame. Find the right TV for your home, from cinematic entertainment and immersive gaming to stylish living spaces.",
+        "imageMobileAlternativeText": "Five types of Samsung TVs with different abstract designs on screen are lined up. Samsung Vision AI and 20 Years Global No.1 TV logo.",
+        "contentsType": "image",
+        "mobileTextAlign": " s-text-align-mo-center",
+        "useCommonDisclaimer": "false",
+        "headlineText": "Discover Samsung TVs designed\r\nfor every way you watch",
+        "engText": "discover samsung tvs designed for every way you watch",
+        "jcr:lastModifiedBy": "m.akanksha@samsung.com",
+        "jcr:primaryType": "nt:unstructured",
+        "carousel1": { "orderby": "1", "textType": "1set", "contentsType": "image", "jcr:primaryType": "nt:unstructured" },
+        "carousel3": { "orderby": "3", "useFlag": "false", "contentsType": "image", "jcr:primaryType": "nt:unstructured" }
+      },
+      "cm_g_text_block_copy_1409814884": {
+        "componentTheme": " bg-white",
+        "description": "Find the right Samsung TV for your home, whether you want cinematic picture  quality, smooth gaming, bright-room viewing,\r\noutdoor entertainment or a design piece that blends into your space.",
+        "sling:resourceType": "samsung/components/content/consumer/global/common/cm-g-text-block",
+        "headlineHeadingLevel": "h2",
+        "mobileLayout": " text-mo-center",
+        "headlineEngText": "which samsung tv is right for you",
+        "headlineText": "Which Samsung TV is right for you?",
+        "desktopLayout": " text-center",
+        "jcr:primaryType": "nt:unstructured",
+        "marginTop": " buffer-top-verywide"
+      },
+      "pd_g_feature_benefit_672843891": {
+        "sling:resourceType": "samsung/components/content/consumer/global/product/pd-g-feature-benefit-column-carousel",
+        "containerWidth": "feature-column-carousel--width-1440",
+        "desktopColumnsSpace": " feature-column-carousel--desktop-columns-space-wide",
+        "layout": "feature-column-carousel--divide",
+        "jcr:primaryType": "nt:unstructured",
+        "list": {
+          "jcr:primaryType": "nt:unstructured",
+          "item0": {
+            "componentTheme": "bg-white",
+            "headlineTextForAnalytics": "micro rgb",
+            "clickableStateLinkTitle": "Micro RGB PF page",
+            "headlineHeadingLevel": "p",
+            "clickableStateLinkPath": "/za/tvs/micro-rgb-tv/",
+            "textAlign": " feature-column-carousel__item--align-center",
+            "imageAlternativeText": "Micro RGB",
+            "headlineText": "Micro RGB",
+            "jcr:primaryType": "nt:unstructured"
+          },
+          "item1": {
+            "headlineTextForAnalytics": "oled",
+            "clickableStateLinkTitle": "OLED PF page",
+            "imageAlternativeText": "OLED",
+            "headlineText": "OLED",
+            "jcr:primaryType": "nt:unstructured"
+          }
+        }
+      },
+      "cm_g_blank_space_177": {
+        "backgroundColor": "bg-transparent",
+        "sling:resourceType": "samsung/components/content/consumer/global/common/cm-g-blank-space",
+        "containerWidth": "blank-space--width-1440",
+        "jcr:primaryType": "nt:unstructured"
+      },
+      "pd_g_feature_benefit_395738741": {
+        "videoCaption": "Neo QLED 8K screen blends seamlessly into the background of a modern living room.",
+        "sling:resourceType": "samsung/components/content/consumer/global/product/pd-g-feature-benefit-full-bleed",
+        "imageMobileAlternativeText": "A large Samsung Micro RGB TV in a modern home displays vivid, colorful abstract visuals.",
+        "contentsType": "image",
+        "mobileTextLayout": "feature-benefit-full-bleed--m-bottom  feature-benefit-full-bleed--m-left",
+        "videoAlternativeText": "Neo QLED 8K screen blends seamlessly into the background of a modern living room.",
+        "imageAlternativeText": "A large Samsung Micro RGB TV in a modern home displays vivid, colorful abstract visuals.",
+        "jcr:primaryType": "nt:unstructured"
+      },
+      "pd_g_feature_benefit_1828229403": {
+        "headlineTextForAnalytics": "micro rgb",
+        "description": "Samsung Micro RGB TVs feature a micro-sized RGB color backlight with Color Booster Pro<sup>1</sup>  and Glare Free<sup>2</sup>  technologies, delivering incredibly detailed colors, high brightness, rich contrast, and an immersive viewing experience.",
+        "sling:resourceType": "samsung/components/content/consumer/global/product/pd-g-feature-benefit-full-bleed",
+        "contentsType": "image",
+        "subHeadlineText": "Best for: Premium home entertainment and\r\nexceptional picture quality.",
+        "headlineText": "Micro RGB",
+        "jcr:primaryType": "nt:unstructured",
+        "disclaimerList": {
+          "jcr:primaryType": "nt:unstructured",
+          "item0": {
+            "jcr:primaryType": "nt:unstructured",
+            "disclaimer": "* Top 4 features: Micro RGB Technology | Micro RGB AI Engine Pro | Micro RGB Precision Color 100 | Vision AI Companion"
+          }
+        },
+        "list": {
+          "jcr:primaryType": "nt:unstructured",
+          "item0": {
+            "openAction": "_self",
+            "linkTitle": "Learn more: Micro RGB marketing page",
+            "textForAnalytics": "learn more",
+            "ctaType": "link",
+            "linkPath": "/za/tvs/micro-rgb-tv/highlights",
+            "buttonTheme": "cta--underline",
+            "jcr:primaryType": "nt:unstructured",
+            "text": "Learn more"
+          },
+          "item1": {
+            "linkTitle": "View all: Micro RGB PF page",
+            "textForAnalytics": "view all",
+            "ctaType": "link",
+            "linkPath": "/za/tvs/micro-rgb-tv/",
+            "jcr:primaryType": "nt:unstructured",
+            "text": "View all"
+          }
+        }
+      },
+      "pd_g_feature_benefit_993828210": {
+        "headlineTextForAnalytics": "the frame",
+        "description": "Samsung The Frame transforms your TV into an art display with Art Mode<sup>3</sup>, allowing you to enjoy artwork when you’re not watching TV.",
+        "sling:resourceType": "samsung/components/content/consumer/global/product/pd-g-feature-benefit-full-bleed",
+        "headlineText": "The Frame",
+        "jcr:primaryType": "nt:unstructured",
+        "list": {
+          "jcr:primaryType": "nt:unstructured",
+          "item1": {
+            "linkTitle": "View all: The Frame PF page",
+            "ctaType": "link",
+            "linkPath": "/za/lifestyle-tvs/the-frame/",
+            "jcr:primaryType": "nt:unstructured",
+            "text": "View all"
+          }
+        }
+      },
+      "cm_g_static_content_": {
+        "sling:resourceType": "samsung/components/content/consumer/global/common/cm-g-static-content",
+        "bodyHtml": "<!-- 2026 VD TVs PCD -->\r\n    <style>\r\n        @media screen and (max-width:767px) {\r\n            .shop-tv-size .viewing-distance .tv-size-range .unit:before{content:\"or more\";display:inline-block;}\r\n            .shop-tv-size .title:after{content:\"\";display:block;}\r\n        }\r\n    </style>\r\n    <div class=\"shop-tv-size\">\r\n        <div class=\"title\">\r\n            <h3>Find the right TV size for your space</h3>\r\n            <p>These recommendations are designed for an immersive viewing experience.</p>\r\n        </div>\r\n        <div class=\"viewing-distance\">\r\n            <h3>Viewing Distance (meters)</h3>\r\n            <div class=\"ui\"><input type=\"range\" title=\"Select viewing distance\" min=\"1\" max=\"7\" value=\"5\" step=\"0.01\" autocomplete=\"off\"></div>\r\n            <div class=\"unit\"><span>1.1m</span><span>2.5m</span></div>\r\n        </div>\r\n        <div class=\"viewing\">\r\n            <div class=\"view-box\"><p>We Recommend</p><div class=\"size\">75\" TVs</div></div>\r\n            <a href=\"https://www.samsung.com/za/tvs/75-inch-tvs/\" class=\"shop-link\">View all 75'' TVs</a>\r\n            <a href=\"https://www.samsung.com/za/tvs/tv-buying-guide/what-size-tv-should-i-get/\" aria-label=\"Learn more: TV Buying Guide What size TV should i get?\" class=\"size-link\">Learn more</a>\r\n        </div>\r\n    </div>\r\n    <script>\r\n        const tvsize_range = {\r\n            init: function(){\r\n                const value= ['43\" TVs','98\" TVs or larger'];\r\n                const btnValue= [\"View all 43'' TVs\",\"View all 98'' TVs or larger\"];\r\n                const links = [\"https://www.samsung.com/africa_en/tvs/43-inch-tvs/\"];\r\n                const input = document.querySelector('.tv-size-range input')\r\n                input.addEventListener(\"input\", (event) => {});\r\n            }\r\n        }\r\n        tvsize_range.init();\r\n    </script>\r\n    <!-- 2026 VD TVs PCD -->",
+        "jcr:primaryType": "nt:unstructured"
+      },
+      "cm_g_bleed_card_copy": {
+        "sling:resourceType": "samsung/components/content/consumer/global/common/cm-g-bleed-card",
+        "headlineHeadingLevel": "h2",
+        "jcr:primaryType": "nt:unstructured",
+        "columns": {
+          "jcr:primaryType": "nt:unstructured",
+          "column1": {
+            "jcr:primaryType": "nt:unstructured",
+            "text": {
+              "headlineTextAnalytics": "help choose my tv",
+              "description": "Find the right Samsung TV based on your viewing\r\npreferences, room environment and entertainment needs.",
+              "jcr:primaryType": "nt:unstructured",
+              "textColor": "black",
+              "headlineText": "Help choose my TV"
+            },
+            "image": {
+              "altText": "A sales associate holding a tablet helps a couple choose their TV.",
+              "desktopImage": "/content/dam/samsung/za/tvs/18-09-26/2026-tv-pcd-f07-2-tv-buying-guide-pc.jpg",
+              "jcr:primaryType": "nt:unstructured"
+            },
+            "linkAction": {
+              "openAction": "self",
+              "textAnalytics": "start now",
+              "buttonColor": "black",
+              "linkTitle": "Start now: Help choose my TV page",
+              "linkPath": "/za/tvs/help-me-choose/",
+              "buttonTheme": "contained",
+              "jcr:primaryType": "nt:unstructured",
+              "text": "Start now"
+            }
+          },
+          "column3": { "jcr:primaryType": "nt:unstructured", "text": { "jcr:primaryType": "nt:unstructured", "textShadow": "false" } }
+        }
+      },
+      "pd_g_feature_benefit_427973104": {
+        "sling:resourceType": "samsung/components/content/consumer/global/product/pd-g-feature-benefit-column-carousel",
+        "jcr:primaryType": "nt:unstructured",
+        "list": {
+          "jcr:primaryType": "nt:unstructured",
+          "item2": {
+            "headlineTextForAnalytics": "why oled",
+            "textForLinkAction1": "Learn more",
+            "linkPathForLinkAction1": "/za/tvs/oled-tv/highlights/",
+            "analytisForLinkAction1": "learn more",
+            "alternativeForLinkAction1": "Learn more: Why OLED page",
+            "imageAlternativeText": "A Samsung OLED TV displaying a flower-like design with rich color and deep blacks.",
+            "headlineText": "Why OLED ",
+            "jcr:primaryType": "nt:unstructured"
+          }
+        }
+      },
+      "cm_g_text_block_copy_783066127": {
+        "componentTheme": " bg-gray",
+        "sling:resourceType": "samsung/components/content/consumer/global/common/cm-g-text-block",
+        "jcr:primaryType": "nt:unstructured",
+        "disclaimerList": {
+          "jcr:primaryType": "nt:unstructured",
+          "item5": {
+            "jcr:primaryType": "nt:unstructured",
+            "disclaimer": "2. Glare Free: Verified Glare Free performance by UL Solutions, based on Unified Glare Rating (UGR) assessments. Verification issued when: Reflection Glare UGR ≤ 10."
+          }
+        }
+      },
+      "nv_g_breadcrumb_copy_883785443": {
+        "sling:resourceType": "samsung/components/content/consumer/global/navigation/nv-g-breadcrumb",
+        "jcr:primaryType": "nt:unstructured",
+        "linkActionMultifield": {
+          "jcr:primaryType": "nt:unstructured",
+          "item1": {
+            "desktopText": "TV & AV",
+            "linkTitle": "TV & AV",
+            "linkPath": "/za/tvs/",
+            "linkEngText": "TV and AV",
+            "jcr:primaryType": "nt:unstructured",
+            "mobileText": "TV & AV"
+          }
+        }
+      }
+    }
+  },
+  "responsivegrid-top": {
+    "sling:resourceType": "wcm/foundation/components/responsivegrid",
+    "jcr:primaryType": "nt:unstructured",
+    "nv_g_quick_filter_ca": {
+      "sling:resourceType": "samsung/components/content/consumer/global/navigation/nv-g-quick-filter-card",
+      "jcr:primaryType": "nt:unstructured",
+      "setting": { "paddingBottom": "padding-bottom--48", "contentsType": "headlineOnly", "jcr:primaryType": "nt:unstructured" },
+      "contents": { "desktopHeadlineText": "TVs", "headlineEngText": "tvs", "jcr:primaryType": "nt:unstructured", "headlineHeadingLevel": "h1" }
+    }
+  },
+  "main-ipar": {
+    "sling:resourceType": "wcm/foundation/components/iparsys",
+    "inheritance": "cancel",
+    "jcr:primaryType": "nt:unstructured",
+    "iparsys_fake_par": { "sling:resourceType": "wcm/foundation/components/iparsys/par", "jcr:primaryType": "nt:unstructured" },
+    "nv_g_pd_category_mai": {
+      "sling:resourceType": "samsung/components/content/consumer/global/navigation/nv-g-pd-category-main",
+      "jcr:primaryType": "nt:unstructured",
+      "list": {
+        "jcr:primaryType": "nt:unstructured",
+        "item0": {
+          "headlineTextAnalytics": "All TVs",
+          "description": "Find the perfect size for every space",
+          "headlineText": "All TVs",
+          "linkTitle": "All TVs product finder page",
+          "linkPath": "/za/tvs/all-tvs/",
+          "jcr:primaryType": "nt:unstructured",
+          "alternativeText": "A rectangular screen is expanding broadly in all directions."
+        }
+      }
+    },
+    "nv_g_pd_category_sub": {
+      "sling:resourceType": "samsung/components/content/consumer/global/navigation/nv-g-pd-category-sub",
+      "jcr:primaryType": "nt:unstructured",
+      "item": {
+        "jcr:primaryType": "nt:unstructured",
+        "list": {
+          "jcr:primaryType": "nt:unstructured",
+          "item0": {
+            "imageAlt": "Over 98 inch",
+            "linkTitle": "Over 98 inch PF page",
+            "linkPath": "/za/tvs/98-inch-tvs/",
+            "engText": "Over 98 inch",
+            "jcr:primaryType": "nt:unstructured",
+            "text": "Over\r\n98 inch"
+          }
+        }
+      }
+    }
+  }
+}

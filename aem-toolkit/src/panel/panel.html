@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DSY - Digital Samsung Yard</title>
+    <link rel="stylesheet" href="panel.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-row">
+        <button id="back" class="icon-btn" type="button" aria-label="Back" hidden></button>
+        <img class="brand-mark" src="../../icons/icon-48.png" alt="" width="30" height="30" />
+        <div class="topbar-titles">
+          <h1 id="title">DSY</h1>
+          <div id="subtitle" class="topbar-sub" hidden></div>
+        </div>
+        <span id="step-count" class="step-count" hidden></span>
+        <button id="settings" class="icon-btn" type="button" aria-label="Settings" title="Settings"></button>
+      </div>
+      <div id="progress" class="progress" hidden><span id="progress-bar"></span></div>
+    </header>
+
+    <main class="view">
+      <!-- Start screen: what is open in this tab, and the features as cards. -->
+      <section id="home" class="home" hidden></section>
+
+      <!--
+        One feature. Order matters: the form (or, once analysed, the paths it
+        was analysed with), anything that went wrong, then what the analysis
+        found. The question "shall I proceed" sits in the footer, below all of
+        it, so approval is never asked for something not yet on screen.
+      -->
+      <section id="feature-view" class="feature-view" hidden>
+        <div id="feature" class="feature"></div>
+        <div id="banner"></div>
+        <div id="alerts" class="alerts" aria-live="assertive"></div>
+        <div id="done"></div>
+        <div id="result" class="result" aria-live="polite"></div>
+        <!-- The question, under everything it asks about. The tick box and the
+             button stay pinned in the footer. -->
+        <div id="confirm"></div>
+
+        <details id="output" class="activity" hidden>
+          <summary>
+            <span>Activity</span>
+            <span id="log-count" class="activity-count"></span>
+            <button id="clear" class="link-btn" type="button">Clear</button>
+          </summary>
+          <ol id="log" class="log"></ol>
+        </details>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div id="flow" class="flow"></div>
+      <div id="status" class="status"></div>
+    </footer>
+
+    <script type="module" src="panel.js"></script>
+  </body>
+</html>

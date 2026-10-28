@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>DSY - Digital Samsung Yard settings</title>
+    <link rel="stylesheet" href="../panel/panel.css" />
+    <style>
+      body { max-width: 640px; margin: 0 auto; padding: 24px 20px 48px; display: block; }
+      h1 { font-size: 17px; margin-bottom: 4px; }
+      .brand-title { display: flex; align-items: center; gap: 6px; }
+      h2 { margin-top: 28px; margin-bottom: 8px; }
+      .sub { color: var(--fg-muted); margin: 0 0 20px; }
+      .origin-row {
+        display: flex; align-items: center; gap: 8px;
+        padding: 7px 10px; border: 1px solid var(--line);
+        border-radius: var(--radius); margin-bottom: 6px;
+        font-family: var(--mono); font-size: 11.5px;
+      }
+      .origin-row .grow { flex: 1; overflow-wrap: anywhere; }
+      .origin-row .state { font-family: system-ui, sans-serif; font-size: 11px; color: var(--fg-muted); }
+      .origin-row .state[data-granted="false"] { color: var(--warn); }
+      .add { display: flex; gap: 6px; margin-top: 8px; }
+      .add input { flex: 1; }
+      .note { color: var(--fg-muted); font-size: 12px; margin-top: 6px; }
+      .setting { margin-bottom: 14px; }
+      .setting input[type="text"], .setting input[type="number"] { width: 100%; }
+      .setting input[type="number"] { max-width: 90px; }
+      #saved { color: var(--ok); font-size: 12px; margin-left: 10px; }
+      .origin-row { background: var(--surface); }
+      .add input {
+        height: 36px; padding: 0 12px; font-family: var(--mono); font-size: 12px;
+        color: var(--fg); background: var(--surface);
+        border: 1px solid var(--line-strong); border-radius: var(--radius);
+      }
+      .add input:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+      .add button, .origin-row button {
+        font: inherit; font-family: system-ui, sans-serif; font-weight: 600; font-size: 12.5px;
+        height: 32px; padding: 0 14px; border-radius: 999px; cursor: pointer;
+        border: 1.5px solid var(--accent); background: var(--surface); color: var(--accent);
+      }
+      .add button { height: 36px; background: var(--accent); color: var(--accent-fg); }
+      .setting .check { margin: 8px 0; }
+      .fields-title { font-size: 12px; font-weight: 600; color: var(--fg-muted); margin: 16px 0 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+      .fields-add { flex-wrap: wrap; }
+      .fields-add input { flex: 1 1 170px; }
+      .fields-add select { height: 36px; flex: 0 1 190px; }
+      .field-row .field-name { flex: 1; overflow-wrap: anywhere; }
+      .field-row .field-name b { font-weight: 600; }
+      .field-row select { font-family: system-ui, sans-serif; height: 30px; }
+      .field-problem { color: var(--err); }
+    </style>
+  </head>
+  <body>
+    <h1 class="brand-title"><img class="brand-mark" src="../../icons/icon-48.png" alt="" width="30" height="30" /> DSY - Digital Samsung Yard</h1>
+    <p class="sub">Settings are stored in your Chrome profile and sync across your signed-in browsers.</p>
+
+    <h2>Author instances</h2>
+    <p class="note">
+      The extension only reads or writes on origins listed here, and Chrome asks for permission
+      for each one. Removing an origin revokes that permission.
+    </p>
+    <div id="origins"></div>
+    <div class="add">
+      <input id="new-origin" type="text" placeholder="https://author.example.com" spellcheck="false" />
+      <button id="add" type="button">Add</button>
+    </div>
+
+    <h2>Features</h2>
+    <p class="note">Features that are hidden until you turn them on.</p>
+
+    <div class="setting">
+      <label class="check">
+        <input id="feature-versions" type="checkbox" />
+        Show the Versions feature
+      </label>
+      <div class="hint">
+        Lists every saved version of a page, read straight from the repository, and lets you
+        restore one or create a new one with your own message.
+      </div>
+    </div>
+
+    <div class="setting">
+      <label class="check">
+        <input id="versions-save-first" type="checkbox" />
+        When restoring, save the current content as a version first
+      </label>
+      <div class="hint">
+        Keeps a way back from a restore. Off by default, so a restore adds no version of its own.
+      </div>
+    </div>
+
+    <h2>Backup</h2>
+
+    <div class="setting field">
+      <label for="backupfolder">Backup folder</label>
+      <input id="backupfolder" type="text" spellcheck="false" placeholder="india/backup" />
+      <div class="hint">
+        Inserted directly under the site root to form every backup path:
+        <code>/content/samsung/levant/tvs</code> is backed up to
+        <code>/content/samsung/levant/india/backup/tvs</code>.
+      </div>
+    </div>
+
+    <div class="setting field">
+      <label for="marketing">Template for pages with no source counterpart</label>
+      <input id="marketing" type="text" spellcheck="false" />
+      <div class="hint">Used for inserted path segments that do not exist in the source.</div>
+    </div>
+
+    <div class="setting field">
+      <label for="rootdepth">Site root depth</label>
+      <input id="rootdepth" type="number" min="1" max="10" />
+      <div class="hint">
+        How many leading path segments must already exist. 3 means
+        <code>/content/&lt;brand&gt;/&lt;locale&gt;</code> is never created by the extension.
+      </div>
+    </div>
+
+    <div class="setting">
+      <label class="check">
+        <input id="verifyshallow" type="checkbox" />
+        After copying, check that no child pages came across
+      </label>
+    </div>
+
+    <h2>Page sync</h2>
+    <p class="note">
+      Whether components removed at the source are removed at the destination is deliberately
+      not here — it is a tick box on each run.
+    </p>
+
+    <div class="setting field">
+      <label for="upsert-hosts">Extra hosts to rewrite</label>
+      <input id="upsert-hosts" type="text" spellcheck="false" placeholder="cdn.example.com, author.example.com" />
+      <div class="hint">
+        Comma separated. <code>www.samsung.com</code> is always included. A canonical pointing at a
+        host that is not listed is reported but left alone.
+      </div>
+    </div>
+
+    <div class="setting field">
+      <label for="upsert-keep">Destination properties never overwritten</label>
+      <input id="upsert-keep" type="text" spellcheck="false" />
+      <div class="hint">
+        Comma separated. These belong to the destination, not the source — <code>hreflangGroup</code>
+        is the usual one.
+      </div>
+    </div>
+
+    <div class="setting field">
+      <label for="upsert-shared">Sites whose images and links can be kept</label>
+      <input id="upsert-shared" type="text" spellcheck="false" placeholder="global" />
+      <div class="hint">
+        Comma separated. A page copied from one of these sites shows two tick boxes on the review, under
+        Image paths updated and Links updated: untick them to keep pointing at that site's images (nothing is
+        uploaded) or at its links, instead of uploading and re-pointing them.
+      </div>
+    </div>
+
+    <div class="setting">
+      <label class="check">
+        <input id="upsert-assets" type="checkbox" />
+        Upload referenced DAM assets that are missing at the destination
+      </label>
+      <label class="check">
+        <input id="upsert-overwrite" type="checkbox" />
+        Upload again, over assets that are already at the destination
+      </label>
+      <label class="check">
+        <input id="upsert-reorder" type="checkbox" />
+        Fix component order to match the source
+      </label>
+      <label class="check">
+        <input id="upsert-version" type="checkbox" />
+        Create a version of an existing destination page before writing
+      </label>
+      <label class="check">
+        <input id="upsert-strip" type="checkbox" />
+        Clear inherited replication state on a newly created page
+      </label>
+      <label class="check">
+        <input id="upsert-shop" type="checkbox" />
+        Rewrite shop.samsung.com links too
+      </label>
+    </div>
+
+    <h2>From another server</h2>
+    <p class="note">
+      Page metadata — <code>ogTitle</code>, the twitter handles, the page description — is always
+      kept as it already is here, because a locale's own wording cannot be derived from another
+      one's. A page being created has nothing to keep, so it gets the source values as a starting
+      point to edit.
+    </p>
+
+    <div class="setting field">
+      <label for="transfer-preserve">Also keep as it is here</label>
+      <input id="transfer-preserve" type="text" spellcheck="false" placeholder="localContent, pageTrackDepth2" />
+      <div class="hint">Comma separated. Anything else this locale owns and maintains itself.</div>
+    </div>
+
+    <div class="setting">
+      <label class="check">
+        <input id="transfer-assets" type="checkbox" />
+        Upload referenced images that are not here yet
+      </label>
+      <label class="check">
+        <input id="transfer-overwrite" type="checkbox" />
+        Re-upload images that are already here
+      </label>
+    </div>
+
+    <div class="actions">
+      <button id="save" data-tone="primary" type="button">Save</button>
+      <span id="saved" hidden>Saved</span>
+    </div>
+
+    <h2>Copy deck fields</h2>
+    <p class="note">
+      Fields added to the copy deck, or ignored, from its <em>Fields not on the sheet</em> list. A field is a
+      component and a property — <code>cm-g-promo-banner</code> and <code>cardTitle</code> — and counts on every
+      page that component is on. For the page's own properties the component is the page's, like
+      <code>page-standard-pd</code>. <code>*</code> means every component. Changes here apply at once; no Save needed.
+    </p>
+
+    <div class="options-fields">
+      <h3 class="fields-title">Added to the sheet</h3>
+      <div id="fields-added"></div>
+      <h3 class="fields-title">Ignored</h3>
+      <div id="fields-ignored"></div>
+
+      <div class="add fields-add">
+        <input id="field-component" type="text" spellcheck="false" placeholder="component" aria-label="Component" />
+        <input id="field-prop" type="text" spellcheck="false" placeholder="property" aria-label="Property" />
+        <select id="field-kind" class="new-field-group" aria-label="Add or ignore">
+          <option value="add">Add to the sheet</option>
+          <option value="ignore">Ignore</option>
+        </select>
+        <select id="field-group" class="new-field-group" aria-label="Group"></select>
+        <button id="field-add" type="button">Add</button>
+      </div>
+      <p id="field-problem" class="note field-problem" hidden></p>
+    </div>
+
+    <h2>Team defaults</h2>
+    <p class="note">
+      Share your setup: <em>Save my settings as team defaults</em> downloads <code>default-settings.json</code>. Put
+      it in the extension folder before zipping, and everyone who installs that zip starts with your settings.
+      Settings they already have are never overwritten; anything they add stays. <em>Reset to team defaults</em>
+      puts every setting named in the file back, and replaces the copy deck field lists with the file's.
+    </p>
+    <div class="actions">
+      <button id="defaults-export" type="button">Save my settings as team defaults</button>
+      <button id="defaults-reset" type="button">Reset to team defaults</button>
+      <span id="defaults-msg" class="note" hidden></span>
+    </div>
+
+    <script type="module" src="options.js"></script>
+  </body>
+</html>
