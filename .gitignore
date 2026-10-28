@@ -10,3 +10,5 @@ _static-content-work/
 .claude/
 *.xlsx
 *.csv
+aem-browser/
+aem-page-copy.js
