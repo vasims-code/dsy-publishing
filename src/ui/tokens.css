@@ -1,0 +1,122 @@
+/* ======================================================================
+   The design's tokens, and nothing else. Every colour, corner and length
+   in the panel comes from here, so a change of look is a change of this
+   one file.
+   ====================================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces and text */
+  --bg: #f3f5f9;
+  --sf: #ffffff;
+  --sf2: #eef1f6;
+  --tx: #101623;
+  --mu: #556070;
+  --ln: #e3e7ee;
+  --ln2: #cbd2dd;
+
+  /* Blue: the ordinary next step */
+  --ac: #1b5fd9;
+  --ac-hover: #1a4fb8;
+  --on: #ffffff;
+  --acs: #e7effd;
+  --act: #1a4fb8;
+
+  /* Amber: this writes to AEM */
+  --wr: #b54708;
+  --wrt: #ffffff;
+
+  /* Said about a run */
+  --wb: #fff1d6;
+  --wt: #7a4200;
+  --wl: #e8c488;
+  --ob: #e0f4e8;
+  --ot: #14693d;
+  --eb: #fde7e5;
+  --et: #a8201a;
+  --el: #f3b4ae;
+
+  /* Corners. The design is round: a card is 24, a control 14, a pill full. */
+  --r-sm: 10px;
+  --r: 14px;
+  --r-lg: 20px;
+  --r-card: 24px;
+  --r-pill: 999px;
+
+  /* Nothing you press is under 44px. */
+  --h-row: 44px;
+  --h-field: 48px;
+  --h-btn: 52px;
+
+  --mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 3px rgba(16, 24, 40, 0.07);
+}
+
+/* Dark: when Windows is dark, unless Appearance says light ... */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --bg: #0d1016;
+    --sf: #171b23;
+    --sf2: #222834;
+    --tx: #eef2f8;
+    --mu: #9ca7b6;
+    --ln: #262c38;
+    --ln2: #39414f;
+
+    --ac: #78abff;
+    --ac-hover: #9cc2ff;
+    --on: #08173a;
+    --acs: #1c2a47;
+    --act: #b3d0ff;
+
+    --wr: #ffb454;
+    --wrt: #2b1700;
+
+    --wb: #3a2b0f;
+    --wt: #ffcb7a;
+    --wl: #5d4520;
+    --ob: #123424;
+    --ot: #86deaa;
+    --eb: #43191a;
+    --et: #ffa9a3;
+    --el: #6b2f29;
+
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* ... and always when Appearance says dark. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #0d1016;
+  --sf: #171b23;
+  --sf2: #222834;
+  --tx: #eef2f8;
+  --mu: #9ca7b6;
+  --ln: #262c38;
+  --ln2: #39414f;
+
+  --ac: #78abff;
+  --ac-hover: #9cc2ff;
+  --on: #08173a;
+  --acs: #1c2a47;
+  --act: #b3d0ff;
+
+  --wr: #ffb454;
+  --wrt: #2b1700;
+
+  --wb: #3a2b0f;
+  --wt: #ffcb7a;
+  --wl: #5d4520;
+  --ob: #123424;
+  --ot: #86deaa;
+  --eb: #43191a;
+  --et: #ffa9a3;
+  --el: #6b2f29;
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}

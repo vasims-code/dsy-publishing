@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Digital Samsung Yard For Publishing settings</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="panel.css" />
+    <style>
+      body { display: block; }
+      .page { max-width: 560px; margin: 0 auto; padding: 28px 20px 64px; display: flex; flex-direction: column; gap: 12px; }
+      .page h1 { margin: 0; font-size: 20px; font-weight: 700; }
+      .page h2 { margin: 26px 0 0; padding: 0 6px; font-size: 16px; font-weight: 700; }
+      .note { margin: 0; padding: 0 6px; font-size: 13px; color: var(--mu); line-height: 1.45; }
+      .head { display: flex; align-items: center; gap: 12px; }
+      .origin { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 8px 16px; }
+      .origin .host { flex: 1; min-width: 0; font-family: var(--mono); font-size: 11.5px; word-break: break-all; }
+      .origin .state { font-size: 11px; color: var(--mu); flex: none; }
+      .origin .state[data-granted="false"] { color: var(--wt); }
+      .pill-btn {
+        font: inherit; font-size: 13px; font-weight: 600; height: 36px; padding: 0 16px;
+        border-radius: var(--r-pill); border: 1.5px solid var(--ac);
+        background: var(--sf); color: var(--ac); cursor: pointer; flex: none;
+      }
+      .pill-btn[data-tone="quiet"] { border-color: var(--ln); color: var(--tx); }
+      .add { display: flex; gap: 8px; }
+      .add input { flex: 1; min-width: 0; }
+      .add button { height: var(--h-field); padding: 0 20px; background: var(--ac); color: var(--on); border-color: var(--ac); }
+      .soon { padding: 16px 18px; font-size: 13.5px; color: var(--mu); line-height: 1.5; }
+      .saved { font-size: 13px; font-weight: 600; color: var(--ot); }
+      .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 0 6px; }
+      .actions .btn { width: auto; min-height: 48px; padding: 0 24px; font-size: 15px; }
+      .field { padding: 14px 16px; }
+      .list > .field + .field { border-top: 1px solid var(--ln); }
+      /* Two boxes, two menus, one button - laid out so each line is a
+         complete thought, instead of wrapping wherever it happens to fit. */
+      .fields-add {
+        display: grid;
+        /* Two to a line where there is room, one where there is not, so a
+           menu's label is never cut off mid-word. */
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 10px;
+        padding: 16px;
+        border-top: 1px solid var(--ln);
+      }
+      .fields-add input,
+      .fields-add select {
+        width: 100%;
+        min-width: 0;
+        min-height: var(--h-field);
+        box-sizing: border-box;
+        padding: 0 14px;
+        font: inherit;
+        font-size: 14px;
+        color: var(--tx);
+        background: var(--bg);
+        border: 1.5px solid var(--ln);
+        border-radius: var(--r);
+      }
+      .fields-add input { font-family: var(--mono); font-size: 13px; }
+      .fields-add input:focus-visible,
+      .fields-add select:focus-visible { outline: none; border-color: var(--ac); }
+      .fields-add input::placeholder { color: var(--mu); }
+      .fields-add select { padding-right: 34px; }
+      .fields-add #field-add {
+        grid-column: 1 / -1;
+        min-height: var(--h-field);
+        border-radius: var(--r-pill);
+        background: var(--ac);
+        color: var(--on);
+        border-color: var(--ac);
+        font-size: 14.5px;
+      }
+      .field-row { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 16px; }
+      .field-row .name { flex: 1; min-width: 0; font-family: var(--mono); font-size: 11.5px; word-break: break-all; color: var(--mu); }
+      .field-row .name b { color: var(--tx); font-weight: 600; }
+      .field-row select { flex: 0 0 auto; height: 36px; border-radius: var(--r-sm); border: 1.5px solid var(--ln); background: var(--sf); color: var(--tx); padding: 0 8px; font: inherit; font-size: 13px; }
+      .problem { color: var(--et); font-size: 13px; padding: 0 6px; }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="head">
+        <div class="brand" id="brand"></div>
+        <div>
+          <h1>DSY settings</h1>
+          <p class="note" style="padding: 0">Stored in your Chrome profile and synced across your signed-in browsers.</p>
+        </div>
+      </div>
+
+      <h2>Appearance</h2>
+      <div id="theme-box" class="segmented" role="group" aria-label="Appearance"></div>
+
+      <h2>Author instances</h2>
+      <p class="note">
+        DSY only reads or writes on the origins listed here, and Chrome asks permission
+        for each one. Removing an origin revokes that permission.
+      </p>
+      <div id="origins" class="list"></div>
+      <div class="add">
+        <div class="field" style="flex: 1; padding: 0">
+          <input id="new-origin" type="text" placeholder="https://author.example.com" spellcheck="false" aria-label="New author instance" />
+        </div>
+        <button id="add" class="pill-btn" type="button">Add</button>
+      </div>
+
+      <h2>Versions</h2>
+      <div id="versions-box" class="list"></div>
+
+      <h2>Backup</h2>
+      <div id="backup-box" class="list"></div>
+
+      <h2>Copy a page</h2>
+      <p class="note">
+        Whether components removed at the source are removed at the destination is deliberately
+        not here — it is a tick box on each run.
+      </p>
+      <div id="upsert-box" class="list"></div>
+
+      <h2>From another server</h2>
+      <p class="note">
+        Page metadata — ogTitle, the twitter handles, the page description — is always kept as it
+        already is at the destination, because a locale's own wording cannot be derived from
+        another one's. A page being created has nothing to keep, so it gets the source values as a
+        starting point to edit.
+      </p>
+      <div id="transfer-box" class="list"></div>
+
+      <h2>Arabic flipping fixer</h2>
+      <p class="note">
+        The lists the fixer's rules are built from: the units a number can carry — <code>256GB</code>,
+        <code>5000 mAh</code>, <code>25°C</code> — and the English feature names that stand on their own in
+        Arabic copy. The rules themselves stay in the code. Clear a list to go back to the built-in one.
+      </p>
+      <div id="arabic-box" class="list"></div>
+
+      <h2>Broken Link Finder</h2>
+      <p class="note">
+        Every CTA, link and image on a page is looked up on the author instance the page is on. A
+        site-relative link — <code>/sa_en/offers/</code> — is looked up under the content root, which
+        the site root depth above decides: 3 means <code>/content/samsung/sa_en/offers</code>.
+        Nothing is written, and the live site is never asked.
+      </p>
+      <div id="links-box" class="list"></div>
+
+      <div class="actions">
+        <button id="save" class="btn" data-tone="primary" type="button">Save</button>
+        <span id="saved" class="saved" hidden>Saved</span>
+      </div>
+
+      <h2>Product page templates</h2>
+      <p class="note">
+        Pages made from these templates are product pages: their text comes from PIM, so the copy
+        deck reads them as rendered, and their sheets cannot be imported. Give the full template path.
+      </p>
+      <div id="pd-templates" class="list"></div>
+      <div class="add">
+        <div class="field" style="flex: 1; padding: 0">
+          <input id="new-pd-template" type="text" placeholder="/conf/consumer/settings/wcm/templates/page-standard-pd" spellcheck="false" aria-label="New product page template" />
+        </div>
+        <button id="add-pd-template" class="pill-btn" type="button">Add</button>
+      </div>
+      <p id="pd-template-problem" class="note" hidden></p>
+
+      <h2>Copy deck fields</h2>
+      <p class="note">
+        Fields added to the copy deck, or ignored, from its <em>Fields not on the sheet</em> list.
+        A field is a component and a property — <code>cm-g-promo-banner</code> and
+        <code>cardTitle</code> — and counts on every page that component is on. For the page's own
+        properties the component is the page's. <code>*</code> means every component. Changes here
+        apply at once; no Save needed.
+      </p>
+      <p class="note" style="font-weight: 600; color: var(--tx)">Added to the sheet</p>
+      <div id="fields-added" class="list"></div>
+      <p class="note" style="font-weight: 600; color: var(--tx)">Ignored</p>
+      <div id="fields-ignored" class="list"></div>
+      <div class="list">
+        <div class="fields-add">
+          <input id="field-component" type="text" spellcheck="false" placeholder="component" aria-label="Component" />
+          <input id="field-prop" type="text" spellcheck="false" placeholder="property" aria-label="Property" />
+          <select id="field-kind" aria-label="Add or ignore">
+            <option value="add">Add to the sheet</option>
+            <option value="ignore">Ignore</option>
+          </select>
+          <select id="field-group" aria-label="Group"></select>
+          <button id="field-add" class="pill-btn" type="button">Add this field</button>
+        </div>
+      </div>
+      <p id="field-problem" class="problem" hidden></p>
+
+      <h2>Team defaults</h2>
+      <p class="note">
+        <em>Save my settings as team defaults</em> downloads <code>default-settings.json</code>. Put it
+        in the extension folder before zipping, and everyone who installs that zip starts with your
+        settings. Settings they already have are never overwritten. <em>Reset to team defaults</em> puts
+        every setting named in the file back, and replaces the copy deck field lists with the file's.
+      </p>
+      <div class="actions">
+        <button id="defaults-export" class="pill-btn" type="button">Save my settings as team defaults</button>
+        <button id="defaults-reset" class="pill-btn" data-tone="quiet" type="button">Reset to team defaults</button>
+        <span id="defaults-msg" class="note" hidden></span>
+      </div>
+    </div>
+
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

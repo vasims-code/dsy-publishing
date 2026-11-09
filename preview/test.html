@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>DSY tests</title>
+    <link rel="stylesheet" href="../src/ui/tokens.css" />
+    <link rel="stylesheet" href="../src/ui/panel.css" />
+    <style>
+      body { max-width: 760px; margin: 0 auto; padding: 24px 20px 60px; }
+      h1 { font-size: 20px; margin: 0 0 4px; }
+      .sum { font-size: 14px; color: var(--mu); margin-bottom: 16px; }
+      .t { padding: 10px 14px; border-bottom: 1px solid var(--ln); font-size: 13.5px; }
+      .t:last-child { border-bottom: 0; }
+      .t b { font-weight: 600; }
+      .t[data-ok="false"] { background: var(--eb); color: var(--et); }
+      .t[data-ok="true"] .mark { color: var(--ot); }
+      .mark { font-weight: 700; margin-right: 8px; }
+      .why { margin-top: 3px; font-size: 12.5px; }
+    </style>
+  </head>
+  <body>
+    <h1>DSY tests</h1>
+    <div id="sum" class="sum">Running…</div>
+    <div id="out" class="list"></div>
+
+    <script type="module">
+      import { installChrome } from './harness.js';
+      installChrome();
+      const { run } = await import('./tests.js');
+      const results = await run();
+
+      const out = document.getElementById('out');
+      for (const r of results) {
+        const row = document.createElement('div');
+        row.className = 't';
+        row.dataset.ok = String(r.ok);
+        const mark = document.createElement('span');
+        mark.className = 'mark';
+        mark.textContent = r.ok ? 'PASS' : 'FAIL';
+        const name = document.createElement('b');
+        name.textContent = r.name;
+        row.append(mark, name);
+        if (!r.ok) {
+          const why = document.createElement('div');
+          why.className = 'why';
+          why.textContent = r.why;
+          row.append(why);
+        }
+        out.append(row);
+      }
+      const failed = results.filter((r) => !r.ok).length;
+      document.getElementById('sum').textContent =
+        `${results.length - failed} passed, ${failed} failed, of ${results.length}`;
+      window.__results = results;
+    </script>
+  </body>
+</html>

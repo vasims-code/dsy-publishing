@@ -1,0 +1,1905 @@
+/* Figtree, the design's typeface, kept in the extension: a page of an
+   extension cannot fetch it from Google Fonts. One variable file per range. */
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("fonts/figtree-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("fonts/figtree-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ======================================================================
+   The side panel, built to the design boards.
+
+   The shapes here are the design's own: a card is a 24px-cornered white
+   box, a list is one card with its rows divided by a hairline, a button
+   is a full pill. Features draw themselves out of these classes, so a
+   screen that looks new is new markup, never new colours.
+   ====================================================================== */
+
+* { box-sizing: border-box; }
+
+html { background: var(--bg); }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--tx);
+  font: 14px/1.55 "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+[hidden] { display: none !important; }
+
+a { color: inherit; text-decoration: none; }
+
+.icon { display: inline-flex; flex: 0 0 auto; }
+.icon svg { display: block; }
+
+/* ================================================================ layout */
+
+.view {
+  flex: 1;
+  min-height: 0;
+  padding: 20px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ================================================================ header */
+
+/* On home the title is the product; inside a tool it is the tool, with a
+   way back to the left of it. */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 20px 20px 0;
+}
+.brand {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--ac);
+  color: var(--on);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.topbar-titles { min-width: 0; flex: 1; }
+.topbar h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.topbar-sub { font-size: 12px; color: var(--mu); margin-top: 2px; }
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  background: none;
+  border: 0;
+  border-radius: 50%;
+  color: var(--mu);
+  cursor: pointer;
+}
+.icon-btn:hover:not(:disabled) { background: var(--sf2); color: var(--tx); }
+.icon-btn:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
+/* Back is held while a run is going, so the result is not lost; it should look held. */
+.icon-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* =============================================================== surfaces */
+
+.card {
+  background: var(--sf);
+  border: 1px solid var(--ln);
+  border-radius: var(--r-card);
+  padding: 16px 18px;
+}
+
+/* A list is one card; its rows are divided, never separately boxed. */
+.list {
+  background: var(--sf);
+  border: 1px solid var(--ln);
+  border-radius: var(--r-card);
+  overflow: hidden;
+}
+.list > * + * { border-top: 1px solid var(--ln); }
+.list-title { padding: 14px 16px 10px; font-size: 15px; font-weight: 700; }
+.list-title + * { border-top: 0; }
+.list-title + .plan-row { border-top: 1px solid var(--ln); }
+.list-foot { padding: 10px 16px 14px; font-size: 13px; color: var(--mu); line-height: 1.4; }
+
+.label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mu);
+}
+
+/* ============================================================ connection */
+
+/* What a run would talk to, said before anything is chosen. */
+.conn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--sf);
+  border: 1px solid var(--ln);
+  border-radius: var(--r-card);
+  padding: 16px 18px 6px;
+}
+.conn-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ot);
+}
+.conn[data-tone="warn"] .conn-state { color: var(--wt); }
+.conn[data-tone="idle"] .conn-state { color: var(--mu); }
+.conn-host {
+  font-size: 15px;
+  font-weight: 600;
+  word-break: break-all;
+  line-height: 1.3;
+}
+.conn-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: var(--mu);
+}
+.conn-foot button {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--act);
+  background: none;
+  border: 0;
+  min-height: 40px;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* ================================================================= tools */
+
+.tool {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 18px;
+  min-height: 76px;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.tool:hover:not(:disabled) { background: var(--sf2); }
+.tool:focus-visible { outline: 2px solid var(--ac); outline-offset: -3px; }
+.tool:disabled { opacity: 0.5; cursor: default; }
+.tool-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  background: var(--acs);
+  color: var(--act);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.tool-icon.quiet { background: var(--sf2); color: var(--mu); }
+
+/* A tool row that stands on its own rather than inside a list. */
+.row-card {
+  background: var(--sf);
+  border: 1px solid var(--ln);
+  border-radius: var(--r-card);
+  min-height: 64px;
+}
+.tool-text { flex: 1; min-width: 0; }
+.tool-title { font-size: 16px; font-weight: 600; }
+.tool-sub { font-size: 13px; color: var(--mu); line-height: 1.35; margin-top: 2px; }
+
+/* What a tool does to AEM, said on the tool itself. */
+.tool-pill {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--ln);
+  border-radius: 12px;
+  padding: 3px 9px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--mu);
+}
+.tool-pill .icon { color: var(--wr); }
+
+/* The key under the tools: what the two marks mean. */
+.key { display: flex; flex-direction: column; gap: 10px; }
+.key-row { display: flex; align-items: center; gap: 10px; }
+.key-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.key-tag[data-kind="read"] { background: var(--acs); color: var(--act); }
+.key-tag[data-kind="write"] { background: var(--wr); color: var(--wrt); }
+.key-note { font-size: 13px; color: var(--mu); }
+
+/* =============================================================== buttons */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: var(--h-btn);
+  padding: 0 18px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  border: 1.5px solid transparent;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+}
+.btn:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
+.btn[data-tone="primary"] { background: var(--ac); color: var(--on); }
+.btn[data-tone="primary"]:hover:not(:disabled) { background: var(--ac-hover); }
+/* Amber is the promise that something will be written. */
+.btn[data-tone="write"] { background: var(--wr); color: var(--wrt); }
+.btn[data-tone="write"]:hover:not(:disabled) { filter: brightness(0.94); }
+.btn[data-tone="ghost"] {
+  background: none;
+  color: var(--tx);
+  border-color: var(--ln);
+  font-weight: 600;
+}
+.btn[data-tone="ghost"]:hover:not(:disabled) { background: var(--sf2); }
+.btn[data-tone="link"] {
+  background: none;
+  color: var(--act);
+  min-height: var(--h-row);
+  font-size: 15px;
+  font-weight: 600;
+}
+.btn:disabled { background: var(--sf2); color: var(--mu); cursor: default; }
+
+/* ================================================================ footer */
+
+.footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  background: var(--sf);
+  border-top: 1px solid var(--ln);
+  padding: 14px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.footer:empty { display: none; }
+
+/* ================================================================ states */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 32px 8px;
+}
+.empty-icon { color: var(--ln2); }
+.empty h2 { margin: 0; font-size: 17px; font-weight: 600; }
+.empty p { margin: 0; color: var(--mu); font-size: 14px; max-width: 300px; }
+
+.banner {
+  display: flex;
+  gap: 12px;
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+.banner[data-tone="warn"] { background: var(--wb); color: var(--wt); border: 1px solid var(--wl); }
+.banner[data-tone="err"] { background: var(--eb); color: var(--et); border: 1px solid var(--el); }
+.banner[data-tone="ok"] { background: var(--ob); color: var(--ot); }
+.banner[data-tone="info"] { background: var(--acs); color: var(--act); }
+.banner-title { font-weight: 700; margin-bottom: 2px; }
+
+.mono { font-family: var(--mono); font-size: 12px; word-break: break-all; }
+
+/* ============================================================ tool chrome */
+
+/* Pick · Review · Confirm · Run · Result. Filled up to where you are, so how
+   far through a run is is countable rather than guessed. */
+.steps { display: flex; gap: 6px; }
+.step { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.step-line { height: 4px; border-radius: 2px; background: var(--ln); }
+.step-name { font-size: 12px; font-weight: 500; color: var(--mu); }
+.step[data-state="past"] .step-line,
+.step[data-state="now"] .step-line { background: var(--ac); }
+.step[data-state="now"] .step-name { font-weight: 700; color: var(--tx); }
+
+/* Which instance this screen would act on. */
+.conn-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: var(--h-row);
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  background: var(--sf);
+  border: 1px solid var(--ln);
+  border-radius: 22px;
+  cursor: pointer;
+}
+.conn-pill:hover { border-color: var(--ln2); }
+.conn-pill:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
+.conn-pill[data-tone="ok"] { color: var(--ot); }
+.conn-pill[data-tone="warn"] { color: var(--wt); border-color: var(--wl); background: var(--wb); }
+.conn-pill-host {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--mu);
+}
+.conn-pill-state { flex: none; font-weight: 700; }
+
+/* The one thing a screen most needs to say. */
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border-radius: 18px;
+  padding: 13px 16px;
+}
+.notice-text { flex: 1; min-width: 0; }
+.notice-title { font-size: 14px; font-weight: 700; line-height: 1.3; }
+.notice-body { font-size: 13px; font-weight: 500; line-height: 1.35; margin-top: 2px; }
+.notice[data-tone="read"] { background: var(--acs); color: var(--act); }
+.notice[data-tone="write"] { background: var(--wr); color: var(--wrt); }
+.notice[data-tone="warn"] { background: var(--wb); color: var(--wt); }
+.notice[data-tone="ok"] { background: var(--ob); color: var(--ot); }
+.notice[data-tone="err"] { background: var(--eb); color: var(--et); }
+
+/* What will happen, what wants a look, what will not. */
+.counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.count {
+  background: var(--sf);
+  border: 1px solid var(--ln);
+  border-radius: 18px;
+  padding: 12px 14px;
+}
+.count-n { font-size: 26px; font-weight: 700; line-height: 1; }
+.count-label { font-size: 12px; font-weight: 500; color: var(--mu); margin-top: 6px; }
+.count[data-tone="warn"] { background: var(--wb); border-color: var(--wb); }
+.count[data-tone="warn"] .count-n, .count[data-tone="warn"] .count-label { color: var(--wt); font-weight: 600; }
+.count[data-tone="ok"] { background: var(--ob); border-color: var(--ob); }
+.count[data-tone="ok"] .count-n, .count[data-tone="ok"] .count-label { color: var(--ot); font-weight: 600; }
+
+.label-action {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--act);
+  background: none;
+  border: 0;
+  min-height: 40px;
+  padding: 0 4px;
+  cursor: pointer;
+}
+
+/* Label on the left, value on the right. */
+.kv {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+}
+.kv-key { font-size: 13px; color: var(--mu); flex: none; }
+.kv-value { font-size: 14px; font-weight: 600; text-align: right; min-width: 0; word-break: break-word; }
+
+.more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--act);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.more:hover { background: var(--sf2); }
+
+.footer-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.footer-note { font-size: 13px; color: var(--mu); }
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Beside a line of text rather than inside a button: smaller, and held to
+   the accent so a running step reads as the live one at a glance. */
+.run-step > .spinner,
+.tree-row > .spinner {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: var(--ac);
+}
+.tree-row > .spinner { width: 13px; height: 13px; margin-left: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 2.4s; }
+}
+
+/* ================================================================= links */
+
+/* One link found on the page: where it is, and what it becomes. */
+.link-row { display: flex; align-items: flex-start; gap: 14px; padding: 12px 16px; }
+.link-row input {
+  width: 22px;
+  height: 22px;
+  margin: 2px 0 0;
+  accent-color: var(--ac);
+  flex: none;
+}
+.link-text { flex: 1; min-width: 0; }
+.link-where {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--mu);
+}
+.link-where > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
+.link-tag {
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--wb);
+  color: var(--wt);
+  border-radius: 8px;
+  padding: 1px 7px;
+  flex: none;
+}
+.link-url {
+  margin-top: 3px;
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The part that goes away, struck through where it stands. */
+.link-cut {
+  background: var(--eb);
+  color: var(--et);
+  border-radius: 4px;
+  padding: 0 3px;
+  font-weight: 500;
+  text-decoration: line-through;
+}
+
+/* ========================================================= arabic fixer */
+
+/* One field found on the page: a copy deck row, its whole text as it shows now and fixed. */
+.af-field-head { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.af-field-head input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--ac);
+  flex: none;
+}
+.af-field-head .deck-row-field { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.af-runs { margin-top: 8px; }
+.af-note { margin-top: 6px; font-size: 12px; color: var(--wt); }
+.af-compare {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--sf2);
+  border-radius: var(--r-sm);
+  display: grid;
+  gap: 8px;
+}
+.af-line-label { font-size: 11px; font-weight: 600; color: var(--mu); text-transform: uppercase; letter-spacing: 0.04em; }
+.af-text { font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.af-block + .af-block { margin-top: 6px; }
+.af-text sup,
+.af-text sub { font-size: 0.72em; line-height: 0; }
+/* A mark, drawn as a thin bar where it stands. Inline and nothing else: an
+   inline-block or unicode-bidi would change the very layout it shows. */
+.af-mark { border-left: 2px solid var(--ac); margin: 0 1px; }
+.af-mark[data-kind="rlm"] { border-left-color: var(--wr); }
+/* A run that flips, where it lands now; and the same run, held in place. */
+.af-flip { background: var(--eb); color: var(--et); box-shadow: inset 0 0 0 1px var(--el); border-radius: 4px; }
+.af-run { background: var(--ob); color: var(--ot); border-radius: 4px; }
+.af-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; padding: 0 6px; font-size: 11px; color: var(--mu); }
+.af-legend > span:nth-child(2n + 3) { margin-left: 8px; }
+.af-legend > .af-flip,
+.af-legend > .af-run { padding: 0 4px; }
+/* A decimal comma turned to a dot: the comma now, the dot fixed. */
+.af-dot { padding: 0 2px; border-radius: 3px; font-weight: 700; }
+.af-dot[data-kind="from"] { background: var(--eb); color: var(--et); }
+.af-dot[data-kind="to"] { background: var(--ob); color: var(--ot); }
+
+/* Text pasted by hand - the Flipping Converter, Static or PDP. The source
+   and the fixed text are the paste box in the body face, wrapping, since
+   this is Arabic copy rather than rows from Excel; the PDP specs stay code. */
+.view > .field textarea.af-source {
+  height: 160px;
+  resize: vertical;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.view > .field textarea.af-code { height: 160px; resize: vertical; white-space: pre-wrap; }
+.af-options > .check-row + .check-row,
+.af-options > .check-row + .field { border-top: 1px solid var(--ln); }
+.af-row { padding: 12px 16px; }
+.af-row > .af-compare { margin-top: 0; }
+.af-pre { white-space: pre-wrap; }
+/* What was done, and the one line that says the words themselves are untouched. */
+.af-status { font-size: 13px; color: var(--mu); line-height: 1.5; }
+.af-status b { font-weight: 600; color: var(--ot); }
+.af-status b[data-tone="warn"] { color: var(--wt); }
+.af-verdict { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--ot); }
+.af-verdict[data-tone="bad"] { color: var(--et); }
+/* The commas card: under the switch, how many change, then one row a comma -
+   the text around it, with the dot it becomes or the comma it keeps. */
+.af-comma-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 16px; min-height: 44px; }
+.af-comma-count { font-size: 13px; color: var(--mu); }
+.af-comma-head .bar-action { white-space: nowrap; }
+.af-comma { display: flex; align-items: center; gap: 12px; padding: 10px 16px; cursor: pointer; }
+.af-comma + .af-comma { border-top: 1px solid var(--ln); }
+.af-comma input { width: 20px; height: 20px; margin: 0; accent-color: var(--ac); flex: none; }
+.af-comma[data-kept="true"] .af-snippet { color: var(--mu); }
+.af-snippet { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; line-height: 1.5; }
+.af-dot[data-kind="keep"] { background: var(--sf2); color: var(--mu); }
+/* The Ctrl+F check: found by Chrome, found by Excel. */
+.af-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.af-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; border-radius: var(--r-pill); padding: 3px 9px; }
+.af-badge[data-tone="ok"] { background: var(--ob); color: var(--ot); }
+.af-badge[data-tone="bad"] { background: var(--eb); color: var(--et); }
+
+/* =============================================================== picking */
+
+/* The page this tab is showing, offered as the one to work on. */
+.page-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--sf);
+  border: 1.5px solid var(--ln);
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+}
+.page-card[data-selected="true"] { border: 2px solid var(--ac); padding: 13px 15px; }
+.page-card-eyebrow { font-size: 12px; color: var(--mu); }
+.page-card-title { font-size: 15px; font-weight: 700; margin-top: 1px; }
+.page-card-path {
+  font-size: 12px;
+  color: var(--mu);
+  margin-top: 1px;
+  word-break: break-all;
+  line-height: 1.35;
+}
+.page-card-note { font-size: 13px; color: var(--mu); margin-top: 3px; }
+.page-card-tag {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--ob);
+  color: var(--ot);
+  border-radius: 10px;
+  padding: 3px 9px;
+}
+.page-summary { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; }
+
+/* ================================================================ fields */
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field-label { font-size: 13px; font-weight: 600; color: var(--mu); }
+.field input {
+  width: 100%;
+  min-height: var(--h-field);
+  box-sizing: border-box;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--tx);
+  background: var(--bg);
+  border: 1.5px solid var(--ln);
+  border-radius: var(--r);
+}
+.field input:focus-visible { outline: none; border-color: var(--ac); }
+.field-hint { font-size: 13px; color: var(--mu); line-height: 1.4; }
+
+/* A list the code decides, shown rather than typed into. Wraps, because
+   there are two dozen of them and the page is read, not scrolled sideways. */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--mu);
+  background: var(--sf2);
+  border: 1px solid var(--ln);
+  border-radius: 6px;
+  padding: 3px 7px;
+  white-space: nowrap;
+}
+
+/* ================================================= several things to say */
+
+.notice-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: 18px;
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.4;
+  background: var(--wb);
+  color: var(--wt);
+}
+.notice-line { display: flex; gap: 10px; align-items: flex-start; }
+.notice-line .icon { margin-top: 1px; }
+
+/* ============================================================== a run on */
+
+.run-step {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  column-gap: 14px;
+  align-items: start;
+  padding: 12px 18px;
+  font-size: 14px;
+  color: var(--tx);
+}
+.run-step > :first-child { grid-row: 1 / span 2; margin-top: 2px; color: var(--mu); }
+.run-step[data-state="running"] > :first-child { color: var(--ac); }
+.run-step[data-state="done"] > :first-child { color: var(--ot); }
+.run-step[data-state="failed"] > :first-child { color: var(--et); }
+.run-step-name { font-weight: 600; min-width: 0; }
+.run-step[data-state="failed"] .run-step-name { color: var(--et); }
+.run-step-note { font-size: 12px; color: var(--mu); margin-top: 2px; }
+.run-step-note:empty { display: none; }
+.run-step > .spinner { width: 20px; height: 20px; margin-top: 2px; }
+.run-note { font-size: 12px; color: var(--mu); text-align: center; line-height: 1.5; }
+
+/* An image the run left, as a chip with where it should go beneath. */
+.byhand .mono { align-self: flex-start; background: var(--sf2); border-radius: 6px; padding: 1px 7px; }
+.byhand-to { background: none !important; padding: 0 2px !important; font-size: 12px; color: var(--mu); }
+
+/* ============================================================ repository */
+
+/* Drawn the way CRXDE draws it, so what is about to happen can be read
+   against the tree the page already lives in. */
+.tree-title { padding: 14px 16px 10px; font-size: 15px; font-weight: 600; }
+.tree-scroll {
+  border-top: 1px solid var(--ln);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.tree {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+  min-width: max-content;
+}
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  box-sizing: border-box;
+  padding-right: 10px;
+  white-space: nowrap;
+}
+.tree-twisty { width: 12px; flex: 0 0 12px; text-align: center; font-size: 9px; color: var(--mu); }
+.tree-icon { flex: 0 0 16px; color: var(--mu); }
+.tree-name { margin-left: 2px; font-size: 12.5px; color: var(--mu); }
+/* A row the run will touch is the only one in full strength. */
+.tree-row[data-kind] .tree-name { color: var(--tx); }
+.tree-row[data-kind="create"] .tree-icon,
+.tree-row[data-kind="copy"] .tree-icon { color: var(--ac); }
+
+.tree-tag {
+  margin-left: auto;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  background: var(--sf2);
+  color: var(--mu);
+}
+.tree-row[data-kind="create"] .tree-tag,
+.tree-row[data-kind="copy"] .tree-tag { background: var(--acs); color: var(--act); }
+.tree-row[data-kind="update"] .tree-tag { background: var(--wb); color: var(--wt); }
+.tree-row[data-state="running"] .tree-tag { background: var(--acs); color: var(--act); }
+.tree-row[data-state="done"] .tree-tag { background: var(--ob); color: var(--ot); }
+.tree-row[data-state="failed"] .tree-tag { background: var(--eb); color: var(--et); }
+
+/* ============================================================ from / to */
+
+.fromto {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 6px;
+  flex-wrap: wrap;
+}
+.fromto-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mu);
+}
+
+/* ============================================================== versions */
+
+.ver-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 16px;
+  cursor: pointer;
+}
+.ver-row:has(input:disabled) { cursor: default; opacity: 0.75; }
+.ver-row input {
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  accent-color: var(--ac);
+  flex: none;
+}
+.ver-row[data-current="true"] { background: var(--acs); }
+.ver-text { flex: 1; min-width: 0; }
+.ver-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ver-name { font-size: 15px; font-weight: 600; }
+.ver-when { font-size: 12px; color: var(--mu); margin-top: 1px; }
+.ver-msg { font-size: 13px; margin-top: 3px; line-height: 1.4; word-break: break-word; }
+.ver-msg[data-empty="true"] { color: var(--mu); font-style: italic; }
+
+/* ================================================================ dialog */
+
+/* Asked over the list, so the row it is about stays where it was. */
+.dlg-back {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgba(16, 22, 35, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+}
+.dlg {
+  position: static;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 368px;
+  max-height: 88vh;
+  overflow-y: auto;
+  margin: 0;
+  padding: 18px;
+  box-sizing: border-box;
+  background: var(--bg);
+  color: var(--tx);
+  border: 0;
+  border-radius: var(--r-card);
+}
+.dlg-head { display: flex; align-items: center; gap: 10px; color: var(--wr); }
+.dlg-title { font-size: 18px; font-weight: 700; line-height: 1.25; }
+.dlg-body { font-size: 13.5px; color: var(--mu); line-height: 1.45; }
+.dlg-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 2px; }
+
+/* =========================================================== copy a page */
+
+/* This server or another one - the whole difference between the two
+   features, as one choice at the top of the form. */
+.segmented {
+  display: flex;
+  gap: 4px;
+  background: var(--sf2);
+  border-radius: 16px;
+  padding: 4px;
+}
+.segment {
+  flex: 1;
+  min-height: var(--h-row);
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--mu);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.segment[aria-pressed="true"] { background: var(--sf); color: var(--tx); font-weight: 700; }
+.segment:focus-visible { outline: 2px solid var(--ac); outline-offset: -4px; }
+
+.field select {
+  width: 100%;
+  min-height: var(--h-field);
+  box-sizing: border-box;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--tx);
+  background: var(--bg);
+  border: 1.5px solid var(--ln);
+  border-radius: var(--r);
+}
+.field select:focus-visible { outline: none; border-color: var(--ac); }
+
+.swap {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--h-row);
+  padding: 0 16px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--act);
+  background: var(--sf);
+  border: 1.5px solid var(--ln);
+  border-radius: 22px;
+  cursor: pointer;
+}
+.swap:hover { background: var(--sf2); }
+
+/* A form field on a tool's screen sits in its own card, as the design draws it. */
+.view > .field,
+.view > .field-card {
+  background: var(--sf);
+  border: 1px solid var(--ln);
+  border-radius: var(--r-lg);
+  padding: 16px;
+  gap: 6px;
+}
+.view > .field-card { display: flex; flex-direction: column; gap: 12px; }
+.view > .list:has(> .check-row) { border-radius: var(--r-lg); }
+
+/* A tick box with its own explanation, inside a card. */
+.check-row { display: flex; align-items: flex-start; gap: 14px; padding: 14px 16px; cursor: pointer; }
+.check-row input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--ac); flex: none; }
+.check-text { flex: 1; min-width: 0; }
+.check-title { font-size: 15px; font-weight: 600; }
+.check-hint { font-size: 13px; color: var(--mu); line-height: 1.4; margin-top: 2px; }
+
+.advanced {
+  background: var(--sf);
+  border: 1px solid var(--ln);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.advanced > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 16px;
+  min-height: 56px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+.advanced > summary > :first-child { flex: 1; }
+.advanced > summary::after {
+  content: "";
+  flex: none;
+  width: 18px;
+  height: 18px;
+  background: var(--mu);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 5l7 7-7 7'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 5l7 7-7 7'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.advanced[open] > summary::after { transform: rotate(90deg); }
+.advanced > summary::-webkit-details-marker { display: none; }
+.advanced-note { font-size: 13px; font-weight: 500; color: var(--mu); }
+.advanced[open] > summary { border-bottom: 1px solid var(--ln); }
+.advanced > .field { padding: 14px 16px; }
+.advanced > .field + .field { border-top: 1px solid var(--ln); }
+
+/* What the run will do, in the order it will do it. */
+.plan-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; }
+.plan-n {
+  flex: none;
+  min-width: 28px;
+  height: 28px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  border-radius: 14px;
+  background: var(--acs);
+  color: var(--act);
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.plan-title { font-size: 14px; font-weight: 700; }
+.plan-row { align-items: center; flex-wrap: wrap; }
+.plan-row .tool-text { display: contents; }
+.plan-row .plan-title { flex: 1; }
+.plan-row .plan-detail { flex: 0 0 100%; margin: 4px 0 0 40px; }
+.plan-detail { font-size: 12.5px; color: var(--mu); line-height: 1.4; margin-top: 2px; }
+
+/* An image the run cannot carry, and where it should go. */
+.byhand { padding: 12px 16px; display: flex; flex-direction: column; gap: 3px; }
+.byhand-reason { font-size: 13px; color: var(--mu); line-height: 1.4; }
+.byhand-to { color: var(--ot); }
+
+.kv-value .was { color: var(--mu); }
+.kv:has(> .kv-value .was) { flex-direction: column; align-items: stretch; gap: 2px; padding: 10px 16px; }
+.kv:has(> .kv-value .was) .kv-key { font-size: 12px; }
+.kv:has(> .kv-value .was) .kv-value { text-align: left; font-size: 13.5px; font-weight: 400; }
+
+/* ========================================== a page property, both values */
+
+/* Which line is in bold is which value the page ends up with, so the tick
+   box above can be read off the list instead of worked out name by name. */
+.meta-row { flex-direction: column; align-items: stretch; gap: 4px; }
+.meta-row .kv-key {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tx);
+}
+.meta-row .kv-value { text-align: left; font-weight: 400; width: 100%; }
+.meta-row .meta-val {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+  font-family: var(--mono);
+  color: var(--mu);
+}
+.meta-val + .meta-val { margin-top: 4px; }
+.meta-val[data-wins="true"] { color: var(--tx); font-weight: 600; }
+.meta-val[data-wins="false"] .meta-text { text-decoration: line-through; }
+/* Nothing to strike through: there is no value there to lose. */
+.meta-val[data-blank="true"] .meta-text { text-decoration: none; font-style: italic; }
+.meta-tag {
+  flex: none;
+  width: 48px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--mu);
+}
+.meta-text { min-width: 0; word-break: break-word; }
+
+/* ====================================== the links under a site's tick box */
+
+/* Shown so the box is a decision about links rather than about a number. */
+.link-sub {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 16px 6px 52px;
+  font-size: 12px;
+}
+.link-sub-from {
+  font-family: var(--mono);
+  color: var(--tx);
+  min-width: 0;
+  word-break: break-word;
+}
+.link-sub-note { flex: none; color: var(--mu); }
+.link-sub-more { padding: 6px 16px 10px 52px; font-size: 12px; color: var(--mu); }
+.link-sub:last-of-type { padding-bottom: 12px; }
+
+/* A box that cannot be answered until the plan it changes comes back. */
+.check-row[data-disabled="true"] { cursor: default; opacity: 0.55; }
+
+/* ============================================================= copy deck */
+
+/* A kind of text, with how much of the page it covers. */
+.deck-tick {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  min-height: var(--h-row);
+  cursor: pointer;
+}
+.deck-tick input { width: 20px; height: 20px; margin: 0; accent-color: var(--ac); flex: none; }
+.deck-tick-title { flex: 1; min-width: 0; font-size: 14px; font-weight: 500; }
+.deck-tick-count { font-size: 12px; color: var(--mu); }
+.deck-tick[data-empty="true"] { cursor: default; }
+.deck-tick[data-empty="true"] .deck-tick-title,
+.deck-tick[data-empty="true"] .deck-tick-count { color: var(--ln2); }
+
+.deck-search {
+  width: 100%;
+  min-height: var(--h-field);
+  box-sizing: border-box;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--tx);
+  background: var(--sf);
+  border: 1.5px solid var(--ln);
+  border-radius: var(--r);
+}
+.deck-search:focus-visible { outline: none; border-color: var(--ac); }
+.deck-search::placeholder { color: var(--mu); }
+
+/* A component's own tick sits in its summary, so excluding it needs no
+   opening - and clicking the box does not open the section. */
+.detail > summary > input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--ac);
+  flex: none;
+}
+
+.deck-row { padding: 10px 16px; border-top: 1px solid var(--ln); }
+.deck-row-field { font-size: 12px; color: var(--mu); }
+.deck-row-text {
+  font-size: 13.5px;
+  line-height: 1.45;
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+.deck-row-more {
+  padding: 10px 16px;
+  border-top: 1px solid var(--ln);
+  font-size: 13px;
+  color: var(--mu);
+}
+.soon-row { padding: 16px; font-size: 13.5px; color: var(--mu); }
+
+/* ======================================================== open sections */
+
+/* A component on the copy deck, or a group on the import: its own tick in
+   the summary, so it can be left off without opening it. */
+.detail {
+  background: var(--sf);
+  overflow: hidden;
+}
+.detail > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  min-height: 52px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+.detail > summary::-webkit-details-marker { display: none; }
+.detail > summary:hover { background: var(--sf2); }
+/* The twisty, drawn rather than native, so it matches the other chevrons. */
+.detail > summary::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-right: 1.8px solid var(--mu);
+  border-bottom: 1.8px solid var(--mu);
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+.detail[open] > summary::after { transform: rotate(45deg); margin-top: -4px; }
+.detail[open] > summary { border-bottom: 1px solid var(--ln); }
+
+.detail-title {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.detail-count {
+  flex: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mu);
+  background: var(--sf2);
+  border-radius: var(--r-pill);
+  padding: 2px 9px;
+}
+
+/* ====================================================== copy deck import */
+
+.paste-area {
+  width: 100%;
+  min-height: 120px;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  font: inherit;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--tx);
+  background: var(--bg);
+  border: 1.5px dashed var(--ln);
+  border-radius: var(--r);
+  resize: vertical;
+}
+.paste-area:focus-visible { outline: none; border-color: var(--ac); border-style: solid; }
+
+/* The other way in, for a sheet that is still a file. */
+.file-pick {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--h-row);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--act);
+  cursor: pointer;
+}
+.file-pick input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.file-pick:focus-within { outline: 2px solid var(--ac); outline-offset: 2px; border-radius: var(--r); }
+
+/* One row of the sheet, and what becomes of it. */
+.imp-row { padding: 12px 16px; display: flex; flex-direction: column; gap: 3px; }
+.imp-head { display: flex; align-items: center; gap: 8px; }
+.imp-where {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--mu);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.imp-status {
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 1px 7px;
+  background: var(--sf2);
+  color: var(--mu);
+}
+.imp-row[data-group="write"] .imp-status { background: var(--ob); color: var(--ot); }
+.imp-row[data-group="manual"] .imp-status { background: var(--wb); color: var(--wt); }
+.imp-row[data-group="blocked"] .imp-status { background: var(--eb); color: var(--et); }
+.imp-text { font-size: 13.5px; line-height: 1.45; overflow-wrap: anywhere; }
+.imp-why { font-size: 12.5px; color: var(--mu); line-height: 1.4; }
+
+/* Each text under its own small label, so two of them side by side read as a
+   comparison rather than as one paragraph after another. */
+.imp-line { display: flex; align-items: baseline; gap: 8px; margin-top: 2px; }
+.imp-tag {
+  flex: none;
+  width: 58px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mu);
+  padding-top: 2px;
+}
+.imp-line .imp-text { min-width: 0; }
+.imp-was .imp-text { color: var(--mu); }
+.imp-to .imp-text { color: var(--ot); font-weight: 600; }
+.imp-row[data-group="blocked"] .imp-to .imp-text { color: var(--tx); font-weight: 400; }
+.imp-no {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--mu);
+  background: var(--sf2);
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+.imp-where-row { font-size: 11.5px; color: var(--mu); margin-top: 2px; }
+.imp-pill-row { margin-top: 6px; }
+
+/* A component heading inside the list of rows: its tick decides whether the
+   rows under it are written, which only reads that way with them under it. */
+.sec-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  min-height: 52px;
+  background: var(--sf2);
+  cursor: pointer;
+}
+.sec-head[data-tone="warn"] { background: var(--wb); }
+.sec-head[data-tone="warn"] .sec-name,
+.sec-head[data-tone="warn"] .sec-count { color: var(--wt); }
+.sec-head { padding: 0; cursor: default; }
+.sec-tick { display: flex; align-items: center; padding: 0 0 0 16px; min-height: 52px; cursor: pointer; }
+.sec-head input { width: 22px; height: 22px; margin: 0; accent-color: var(--ac); flex: none; }
+.sec-nobox { width: 22px; margin-left: 16px; flex: none; }
+
+/* The name folds its rows; the tick beside it writes them. Two controls,
+   because they are two decisions. */
+.sec-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  min-height: 52px;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.sec-open:hover { background: var(--sf2); }
+/* A chevron on the right, the way a row that opens is drawn everywhere
+   else: pointing along the row when shut, down when open. */
+.sec-caret {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid var(--mu);
+  border-bottom: 2px solid var(--mu);
+  transform: rotate(-45deg);
+  margin: 0 2px 0 2px;
+  transition: transform 0.12s ease;
+}
+.sec-caret[data-open="true"] { transform: rotate(45deg); margin-top: -4px; }
+.sec-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sec-count {
+  flex: none;
+  min-width: 26px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--mu);
+  background: var(--sf);
+  border-radius: 11px;
+  padding: 2px 8px;
+}
+.sec-head[data-tone="warn"] .sec-count { background: var(--sf); }
+
+/* One card per component, with a gap between them, so a long page reads as
+   a list of components rather than one unbroken list of rows. */
+.sec-stack { display: flex; flex-direction: column; gap: 10px; }
+.sec > .imp-row { border-top: 1px solid var(--ln); }
+.sec > .sec-head { background: var(--sf2); }
+.sec > .deck-row-more { border-top: 1px solid var(--ln); }
+
+/* Narrowing a long list beats scrolling it. */
+.imp-search { padding: 0 2px 4px; }
+.imp-search input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--tx);
+  background: var(--sf);
+  border: 1px solid var(--ln);
+  border-radius: 22px;
+}
+.imp-search input:focus-visible { outline: none; border-color: var(--ac); }
+
+/* Where an image that could not be carried is still served from. */
+.byhand-url { display: flex; align-items: baseline; gap: 8px; margin-top: 2px; }
+.byhand-url-name {
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mu);
+  min-width: 52px;
+}
+.byhand-link {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--act);
+  word-break: break-all;
+  text-decoration: underline;
+}
+
+/* A path takes the whole width, under its label: side by side it is squeezed
+   into a narrow column and breaks mid-word. */
+.kv[data-mono="true"] {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+.kv[data-mono="true"] .kv-key { font-size: 12px; font-weight: 400; }
+.kv[data-mono="true"] .kv-value.mono {
+  align-self: flex-start;
+  background: var(--sf2);
+  border-radius: 6px;
+  padding: 1px 7px;
+  font-size: 12px;
+}
+.kv[data-mono="true"] .kv-value {
+  text-align: left;
+  font-weight: 500;
+  line-height: 1.5;
+  /* Break at the offered points first - after a slash - and only break a
+     word when a single segment is wider than the panel. */
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+/* A one-tap way to fill a field the panel cannot work out for you. */
+.field-action-link {
+  align-self: flex-start;
+  min-height: var(--h-row);
+  padding: 0;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--act);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.field-action-link:hover { text-decoration: underline; }
+
+/* ------------------------------------------------- the activity log */
+
+.log-box { margin-top: 12px; }
+
+.log-empty {
+  padding: 14px 16px;
+  color: var(--mu);
+  font-size: 13px;
+}
+
+.log-lines {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 6px 0;
+}
+
+.log-line {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 10px;
+  padding: 6px 16px;
+  align-items: start;
+  border-top: 1px solid var(--ln);
+}
+
+.log-line:first-child { border-top: 0; }
+
+.log-level {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding-top: 2px;
+  color: var(--mu);
+}
+
+.log-line[data-level='ok'] .log-level { color: var(--on); }
+.log-line[data-level='warn'] .log-level { color: var(--wt); }
+.log-line[data-level='fail'] .log-level { color: var(--et); }
+.log-line[data-level='skip'] .log-level { color: var(--mu); }
+
+.log-text {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--tx);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.log-copy { margin: 10px 16px 14px; }
+
+/* ============================================ reading, and the confirm sheet */
+
+.load-card {
+  background: var(--sf);
+  border: 1px solid var(--ln);
+  border-radius: var(--r-lg);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.load-title { font-size: 14px; font-weight: 700; }
+.load-bar { height: 8px; border-radius: 4px; background: var(--acs); overflow: hidden; position: relative; }
+.load-bar-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  border-radius: 4px;
+  background: var(--ac);
+  animation: load-slide 1.4s ease-in-out infinite;
+}
+@keyframes load-slide { from { left: -40%; } to { left: 100%; } }
+@media (prefers-reduced-motion: reduce) { .load-bar-fill { animation-duration: 3s; } }
+.load-line { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; font-weight: 600; color: var(--act); word-break: break-word; }
+.load-line > :first-child { flex: none; margin-top: 1px; }
+.load-line[data-state="done"] { color: var(--ot); }
+.load-line > .spinner { width: 16px; height: 16px; }
+
+.sheet {
+  background: var(--sf);
+  border-radius: 28px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sheet-head { display: flex; align-items: center; gap: 12px; }
+.sheet-dot {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  background: var(--wr);
+  color: var(--wrt);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.sheet-title { font-size: 18px; font-weight: 700; line-height: 1.3; word-break: break-word; }
+.sheet-text { font-size: 14px; color: var(--mu); line-height: 1.45; }
+.sheet .kv { padding: 12px 16px; }
+.sheet .kv-key { font-size: 13px; }
+.sheet .kv-value { font-size: 14px; font-weight: 600; text-align: right; }
+.sheet .kv-value.mono { font-size: 12.5px; }
+
+/* ======================================================= the backup screens */
+
+.dash-box {
+  min-height: var(--h-field);
+  box-sizing: border-box;
+  border-radius: var(--r);
+  border: 1.5px dashed var(--ln);
+  background: var(--sf2);
+  color: var(--tx);
+  padding: 14px;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.4;
+  word-break: break-all;
+}
+.dash-box[data-state="none"] { color: var(--mu); font-family: inherit; }
+.what-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; font-size: 13.5px; line-height: 1.45; }
+.what-row > .icon { flex: none; margin-top: 2px; color: var(--act); }
+
+.big-card {
+  background: var(--sf);
+  border: 1px solid var(--ln);
+  border-radius: var(--r-card);
+  padding: 20px 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.big-num { display: flex; align-items: baseline; gap: 8px; }
+.big-n { font-size: 44px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+.big-of { font-size: 16px; color: var(--mu); }
+.big-bar { height: 10px; border-radius: 5px; background: var(--acs); overflow: hidden; }
+.big-bar-fill { height: 100%; border-radius: 5px; background: var(--ac); transition: width 0.3s ease; }
+
+/* ===================================================== copy deck, as drawn */
+
+.cd-card { border-radius: var(--r-lg); }
+
+/* The two halves of the tool, each a card of its own. */
+.choice {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  background: var(--sf);
+  border: 1px solid var(--ln);
+  border-radius: var(--r-card);
+  padding: 18px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.choice:hover { background: var(--sf2); }
+.choice:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
+.choice-head { display: flex; align-items: center; gap: 12px; }
+.choice-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  background: var(--acs);
+  color: var(--act);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.choice-title { flex: 1; font-size: 18px; font-weight: 700; }
+.choice-chev { color: var(--mu); display: flex; }
+.choice-sub { font-size: 14px; color: var(--mu); line-height: 1.4; }
+.choice-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.choice-chip[data-tone="read"] { background: var(--acs); color: var(--act); }
+.choice-chip[data-tone="write"] { background: var(--wr); color: var(--wrt); }
+
+/* "How it works": numbered steps in a card. */
+.how-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; }
+.how-n {
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--acs);
+  color: var(--act);
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.how-text { font-size: 14px; line-height: 1.4; }
+
+/* Reading: the path under the bar, and grey rows where the list will be. */
+.load-path { font-size: 12px; color: var(--mu); word-break: break-all; }
+.skel-row { display: flex; align-items: center; gap: 14px; padding: 14px 16px; }
+.skel-box { width: 22px; height: 22px; border-radius: 6px; background: var(--sf2); flex: none; }
+.skel-lines { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.skel-line { height: 12px; border-radius: 6px; background: var(--sf2); }
+.skel-line.short { height: 10px; }
+
+/* The review's search: a pill, with a count and a clear once it holds text. */
+.search-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--h-field);
+  box-sizing: border-box;
+  padding: 0 4px 0 14px;
+  background: var(--sf);
+  border: 1.5px solid var(--ln);
+  border-radius: 24px;
+  color: var(--mu);
+}
+.search-pill:focus-within,
+.search-pill[data-on="true"] { border-color: var(--ac); }
+.search-pill .deck-search {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 15px;
+}
+.search-pill .deck-search:focus-visible { outline: none; }
+.search-count { flex: none; font-size: 13px; font-weight: 700; color: var(--act); }
+.search-clear {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  color: var(--mu);
+  cursor: pointer;
+}
+
+/* A line over a card with actions for all of it. */
+.bar-row { display: flex; align-items: center; justify-content: space-between; padding: 0 0 0 6px; }
+.bar-text { font-size: 13px; color: var(--mu); }
+.bar-actions { display: flex; margin-right: -8px; }
+.bar-action {
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--act);
+  cursor: pointer;
+}
+
+/* The kinds of text and the components, drawn as the review draws them. */
+.deck-tick-title { font-weight: 600; }
+.cd-card .detail > summary { min-height: 56px; padding: 0 16px 0 18px; gap: 10px; }
+.cd-card .detail > summary > input[type="checkbox"] { width: 22px; height: 22px; margin-right: 4px; }
+.cd-card .detail-title { font-size: 15px; font-weight: 700; }
+.cd-card .detail-count { background: none; padding: 0; font-size: 13px; font-weight: 400; }
+.cd-card .detail[open] > summary { background: var(--sf2); }
+.cd-card .deck-row { padding: 12px 16px; }
+.cd-card .deck-row-text { font-size: 14px; font-weight: 600; line-height: 1.35; margin-top: 4px; }
+
+/* The finished sheet. */
+.ready-card {
+  background: var(--sf);
+  border: 1px solid var(--ln);
+  border-radius: var(--r-lg);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ready-head { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; color: var(--ot); }
+.ready-file { display: flex; align-items: center; gap: 14px; }
+.ready-file-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--acs);
+  color: var(--act);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.ready-file-text { min-width: 0; }
+.ready-file-name { font-size: 15px; font-weight: 700; word-break: break-all; }
+.ready-file-sub { font-size: 13px; color: var(--mu); margin-top: 2px; }
+
+/* Import: the sheet's checks, a line each, and the file drop. */
+.status-line { display: flex; align-items: center; gap: 10px; padding: 12px 16px; font-size: 13px; font-weight: 600; color: var(--ot); }
+.status-line[data-tone="err"] { color: var(--et); }
+.drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 24px 16px;
+  background: var(--sf);
+  border: 1.5px dashed var(--ln2);
+  border-radius: var(--r-lg);
+  cursor: pointer;
+}
+.drop-zone[data-over="true"] { border-color: var(--ac); background: var(--acs); }
+.drop-zone:focus-within { outline: 2px solid var(--ac); outline-offset: 2px; }
+.drop-zone input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.drop-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 28px;
+  background: var(--acs);
+  color: var(--act);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.drop-title { font-size: 16px; font-weight: 700; }
+.drop-or { font-size: 13px; color: var(--mu); }
+.drop-btn {
+  min-width: 180px;
+  min-height: var(--h-row);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 22px;
+  background: var(--acs);
+  color: var(--act);
+  font-size: 15px;
+  font-weight: 700;
+}
+.view > .field .paste-area { border-style: solid; height: 150px; resize: none; white-space: pre; }
+
+/* Copy deck search: what was searched for, marked where it is. */
+.deck-hit { background: var(--wb); color: inherit; border-radius: 3px; padding: 0 1px; box-shadow: 0 0 0 1px var(--wt) inset; }
+.deck-search-status { border-radius: var(--r); padding: 10px 14px; font-size: 13px; font-weight: 500; }
+.deck-search-status[data-tone="ok"] { background: var(--ob); color: var(--ot); }
+.deck-search-status[data-tone="warn"] { background: var(--wb); color: var(--wt); }
+
+/* ============================================ fields not on the sheet */
+
+.new-fields .detail-mark {
+  flex: none; width: 22px; height: 22px; display: inline-grid; place-items: center;
+  font-size: 12px; font-weight: 700; color: var(--wt); background: var(--wb); border-radius: var(--r-pill);
+}
+.new-fields .detail-note { margin: 12px 16px 4px; font-size: 13px; line-height: 1.5; color: var(--mu); }
+.new-fields .import-rows { list-style: none; margin: 0; padding: 4px 16px 12px; }
+.new-field { padding: 12px 0; border-bottom: 1px solid var(--ln); }
+.new-field:last-child { border-bottom: 0; }
+.new-field .import-row-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.new-field .deck-field { font-size: 14px; font-weight: 600; color: var(--tx); overflow-wrap: anywhere; }
+.new-field .deck-tag {
+  font-family: var(--mono); font-size: 11px; color: var(--mu);
+  background: var(--sf2); border-radius: var(--r-sm); padding: 2px 8px; overflow-wrap: anywhere;
+}
+.new-field-where { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 6px; }
+.new-field-prop { font-family: var(--mono); font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
+.new-field-context { font-size: 12px; color: var(--mu); overflow-wrap: anywhere; }
+.new-field-value { margin: 2px 0 10px; padding-left: 10px; border-left: 2px solid var(--ln2); overflow-wrap: anywhere; }
+.new-field-value-note { display: block; font-size: 11.5px; color: var(--mu); margin-bottom: 2px; }
+.new-field-value-text { font-size: 13px; font-style: italic; line-height: 1.45; color: var(--tx); }
+.new-field-actions { display: flex; align-items: center; gap: 8px; }
+.new-field-group {
+  flex: 1 1 auto; min-width: 0; height: 36px; padding: 0 10px; font: inherit; font-size: 13px;
+  color: var(--tx); background: var(--bg); border: 1.5px solid var(--ln); border-radius: var(--r-sm);
+}
+.new-field-group:focus-visible { outline: none; border-color: var(--ac); }
+.new-field-actions .btn {
+  flex: none; width: auto; min-height: 36px; height: 36px; padding: 0 18px; font-size: 13px;
+  background: var(--ac); color: var(--on);
+}
+.new-field-actions .btn:hover:not(:disabled) { background: var(--ac-hover); }
+.new-field-actions .btn:disabled { background: var(--sf2); color: var(--mu); }
+.new-field-actions .link-btn {
+  flex: none; height: 36px; padding: 0 6px; font: inherit; font-size: 13px; font-weight: 600;
+  color: var(--act); background: none; border: 0; cursor: pointer;
+}
+.new-field-actions .link-btn:disabled { color: var(--mu); cursor: default; }
+.new-field-problem { margin-top: 6px; font-size: 12px; color: var(--et); line-height: 1.4; }
+.new-field-label { font-size: 14px; font-weight: 600; color: var(--tx); overflow-wrap: anywhere; }
+.new-field-label + .new-field-prop { font-weight: 400; color: var(--mu); }
+
+/* ========================================================= broken links */
+
+/* A tool that only reads wears the blue eye on its pill, as the key says. */
+.tool-pill[data-does="read"] .icon { color: var(--act); }
+/* The broken count: red, as a broken link is. */
+.count[data-tone="err"] { background: var(--eb); border-color: var(--eb); }
+.count[data-tone="err"] .count-n, .count[data-tone="err"] .count-label { color: var(--et); font-weight: 600; }
+
+/* One link in a component's card, drawn as a copy deck row: the field it was
+   typed into and the words on it, then what it is, the link as written,
+   where on author it was looked for, and what was found there. */
+.bl-field { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.bl-field > span:first-child { flex: none; }
+.bl-head { display: flex; align-items: flex-start; gap: 8px; }
+.bl-tag {
+  flex: none;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border-radius: 8px;
+  padding: 1px 7px;
+  background: var(--sf2);
+  color: var(--mu);
+}
+.bl-tag[data-tone="err"] { background: var(--eb); color: var(--et); }
+.bl-tag[data-tone="warn"] { background: var(--wb); color: var(--wt); }
+.bl-tag[data-tone="ok"] { background: var(--ob); color: var(--ot); }
+.bl-tag[data-tone="info"] { background: var(--acs); color: var(--act); }
+.bl-raw { flex: 1; min-width: 0; word-break: break-all; }
+/* Where on author it was looked for, when that differs from how it was written. */
+.bl-path {
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--mu);
+  word-break: break-all;
+  line-height: 1.45;
+}
+.bl-path b { font-weight: 600; color: var(--tx); }
+.bl-note { margin-top: 3px; font-size: 12.5px; color: var(--mu); line-height: 1.4; }
+.bl-row[data-state="missing"] .bl-note { color: var(--et); font-weight: 500; }
+.bl-row[data-state="case"] .bl-note,
+.bl-row[data-state="notpage"] .bl-note,
+.bl-row[data-state="forbidden"] .bl-note,
+.bl-row[data-state="error"] .bl-note,
+.bl-row[data-state="placeholder"] .bl-note { color: var(--wt); font-weight: 500; }
+/* The words on the CTA, beside its field. */
+.bl-use-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--tx);
+  font-weight: 500;
+}
+.bl-use-text::before { content: "“"; }
+.bl-use-text::after { content: "”"; }
+.bl-open {
+  display: block;
+  margin-top: 4px;
+  min-height: 32px;
+  padding: 0;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--act);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.bl-open:hover { text-decoration: underline; }
+/* The two folded piles - not checked, and exist on author - hold the same component cards. */
+.bl-group { border: 1px solid var(--ln); border-radius: var(--r-card); }
+.bl-group > .detail { border-top: 1px solid var(--ln); }
+.bl-group > .detail > summary { padding-left: 24px; }
+.bl-group > .list-foot { border-top: 1px solid var(--ln); }
+.detail > .bl-row + .more { border-top: 1px solid var(--ln); }

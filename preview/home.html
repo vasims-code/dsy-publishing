@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>DSY panel preview</title>
+    <link rel="stylesheet" href="../src/ui/tokens.css" />
+    <link rel="stylesheet" href="../src/ui/panel.css" />
+    <style>
+      body { width: 400px; margin: 0 auto; border-left: 1px solid var(--ln); border-right: 1px solid var(--ln); }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <button id="back" class="icon-btn" type="button" aria-label="Back" hidden></button>
+      <div id="brand" class="brand"></div>
+      <div class="topbar-titles">
+        <h1 id="title">DSY</h1>
+        <div id="subtitle" class="topbar-sub">Digital Samsung Yard For Publishing</div>
+      </div>
+      <button id="settings" class="icon-btn" type="button" aria-label="Settings"></button>
+    </header>
+    <main id="view" class="view"></main>
+    <footer id="footer" class="footer"></footer>
+
+    <script type="module">
+      /* A stand-in for Chrome, so the real panel code can be looked at in a
+         plain browser tab. Nothing here ships. */
+      window.chrome = {
+        tabs: {
+          query: async (q) => {
+            if (q?.url?.startsWith('https://p6-eu-author.samsung.com')) {
+              return [{ id: 2, url: 'https://p6-eu-author.samsung.com/', title: 'EU author' }];
+            }
+            return [{
+              id: 1,
+              url: 'https://p6-ap-author.samsung.com/editor.html/content/samsung/levant/smartphones/galaxy-s25-ultra.html',
+              title: 'Galaxy S25 Ultra | Samsung Levant'
+            }];
+          },
+          create: async () => ({ id: 3 }),
+          onActivated: { addListener() {} },
+          onUpdated: { addListener() {} }
+        },
+        permissions: { contains: async () => true, request: async () => true },
+        runtimeMessages: [],
+        storage: {
+          onChanged: { addListener() {} },
+          sync: {
+            get: async () => ({
+              'aemt.settings': {
+                origins: ['https://p6-ap-author.samsung.com', 'https://p6-eu-author.samsung.com'],
+                settingsVersion: 2,
+                featureVersions: true
+              }
+            }),
+            set: async () => {}
+          }
+        },
+        runtime: {
+          openOptionsPage() {},
+          onMessage: { addListener(fn) { window.__report = fn; } },
+          async sendMessage(msg) {
+            if (msg?.type === 'aemt:ensure-content-script') return { ok: true };
+            return { ok: true };
+          }
+        }
+      };
+
+      /* A scan result shaped like the real worker's, so the review screen can
+         be looked at without an AEM server. */
+      const SCAN = {
+        page: '/content/samsung/uk/offers/spring-sale',
+        title: 'Spring sale',
+        hosts: ['www.samsung.com'],
+        nodes: 48,
+        count: 6,
+        components: [
+          { node: 'root/hero', type: 'hero', title: 'Hero', liveCopy: false, links: [
+            { prop: 'text', index: -1, start: 10, from: 'https://www.samsung.com/uk/smartphones/galaxy-s25/', to: '/uk/smartphones/galaxy-s25/', value: 'v1' }
+          ]},
+          { node: 'root/teaser1', type: 'teaser', title: 'Teaser 1', liveCopy: false, links: [
+            { prop: 'linkURL', index: -1, start: 0, from: 'https://www.samsung.com/uk/tablets/galaxy-tab-s10/', to: '/uk/tablets/galaxy-tab-s10/', value: 'v2' }
+          ]},
+          { node: 'root/teaser2', type: 'teaser', title: 'Teaser 2', liveCopy: false, links: [
+            { prop: 'linkURL', index: -1, start: 0, from: 'https://www.samsung.com/uk/watches/galaxy-watch7/', to: '/uk/watches/galaxy-watch7/', value: 'v3' }
+          ]},
+          { node: 'root/teaser3', type: 'teaser', title: 'Teaser 3', liveCopy: false, links: [
+            { prop: 'linkURL', index: -1, start: 0, from: 'https://www.samsung.com/de/tvs/all-tvs/', to: '/de/tvs/all-tvs/', value: 'v4' }
+          ]},
+          { node: 'root/promo', type: 'promo', title: 'Promo banner', liveCopy: true, links: [
+            { prop: 'ctaLink', index: -1, start: 0, from: 'https://www.samsung.com/uk/offers/', to: '/uk/offers/', value: 'v5' }
+          ]},
+          { node: 'root/footer', type: 'footer', title: 'Footer', liveCopy: false, links: [
+            { prop: 'moreLink', index: -1, start: 0, from: 'https://www.samsung.com/uk/support/', to: '/uk/support/', value: 'v6' }
+          ]}
+        ]
+      };
+
+
+      const { removalsFingerprint } = await import('/src/core/protocol.js');
+      const BK_ROOT = '/content/samsung/levant/india/backup/home-appliances';
+      const BACKUP = {
+        mode: 'create',
+        variant: null,
+        upToDate: false,
+        source: '/content/samsung/levant/home-appliances/buying-guide/microwaves',
+        dest: BK_ROOT + '/buying-guide/microwaves',
+        create: [
+          { path: BK_ROOT, title: 'Home appliances', template: 'page-marketing', content: 'empty' },
+          { path: BK_ROOT + '/buying-guide', title: 'Buying guide', template: 'page-marketing', content: 'empty' }
+        ],
+        skip: [
+          { path: '/content/samsung/levant/india', content: 'untouched' },
+          { path: '/content/samsung/levant/india/backup', content: 'untouched' }
+        ],
+        copy: {
+          path: BK_ROOT + '/buying-guide/microwaves',
+          sourcePath: '/content/samsung/levant/home-appliances/buying-guide/microwaves',
+          title: 'Microwaves',
+          content: 'full'
+        },
+        update: null,
+        sync: null,
+        counts: { create: 2, skip: 2, root: 3 }
+      };
+
+
+      const VER_PAGE = '/content/samsung/lb/india/backup/air-conditioners/wall-mount';
+      const VERSIONS = {
+        page: VER_PAGE,
+        title: 'Wall mount',
+        historyPath: '/jcr:system/jcr:versionStorage/ab/cd/ef/abcdef',
+        neverVersioned: false,
+        current: '1.3',
+        currentNumber: 4,
+        // The page has been edited since version 4 was saved.
+        live: { lastModified: '2026-10-30T11:20:00.000Z', lastModifiedBy: 'vshaik' },
+        // ?same=1 shows a page that still matches the version it sits on.
+        drift: { changed: true, where: ['root/hero › jcr:title', 'root/teaser1 › linkURL', 'root/promo (added since)'] },
+        versions: [
+          { name: '1.3', id: 'v4', number: 4, created: '2026-10-29T14:02:00.000Z', labels: [], title: null,
+            comment: 'Before the October refresh', lastModified: '2026-10-29T14:02:00.000Z',
+            lastModifiedBy: 'asim.b', current: true },
+          { name: '1.2', id: 'v3', number: 3, created: '2026-10-21T09:40:00.000Z', labels: [], title: null,
+            comment: 'Synced from /uk', lastModifiedBy: 'asim.b', current: false },
+          { name: '1.1', id: 'v2', number: 2, created: '2026-10-14T16:18:00.000Z', labels: [], title: null,
+            comment: null, lastModifiedBy: 'system', current: false },
+          { name: '1.0', id: 'v1', number: 1, created: '2026-10-02T11:05:00.000Z', labels: [], title: null,
+            comment: 'First backup', lastModifiedBy: 'asim.b', current: false }
+        ]
+      };
+
+
+      const CP = {
+        mode: 'update',
+        source: '/content/samsung/uk/mobile-phone-buying-guide/samsung-fold-vs-flip',
+        dest: '/content/samsung/lb/mobile-phone-buying-guide/samsung-fold-vs-flip',
+        rewrite: { enabled: true, srcSite: 'uk', destSite: 'lb' },
+        sections: [
+          { id: 'folders', title: 'Create image folders', count: 2, detail: 'So the uploaded images have somewhere to land.' },
+          { id: 'assets', title: 'Upload images', count: 6, detail: 'Missing images are uploaded, so AEM and Dynamic Media process them.' },
+          { id: 'nodes', title: 'Add components', count: 1, detail: 'Components the source has and this page does not.' },
+          { id: 'props', title: 'Write properties', count: 23, detail: 'across 6 nodes' },
+          { id: 'deletes', title: 'Remove components', count: 1 },
+          { id: 'order', title: 'Reorder components', count: 3 }
+        ],
+        site: {
+          from: '/content/samsung/uk', to: '/content/samsung/lb', applied: true, notes: [],
+          rows: [
+            { prop: 'twitterSite', from: '@samsung_uk', to: '@samsung_lb' },
+            { prop: 'twitterCreator', from: '@samsung_uk', to: '@samsung_lb' },
+            { prop: 'Title ending', from: '| Samsung UK', to: '| Samsung Levant' },
+            { prop: 'jcr:language', from: 'en_GB', to: 'ar' }
+          ]
+        },
+        imagesByHand: [
+          { kind: 'byhand', from: '/content/dam/samsung/uk/offers/spring/hero-kv.jpg',
+            to: '/content/dam/samsung/lb/offers/spring/hero-kv.jpg',
+            reason: 'Will not be carried. The page will point at the path shown, so put the image there.' },
+          { kind: 'missing', from: '/content/dam/samsung/uk/offers/spring/old-offer.jpg',
+            reason: 'Not in the source library and not on Dynamic Media, so there is nothing to carry.' }
+        ],
+        blockers: [],
+        largeRemoval: true,
+        props: { added: [], updated: [], deleted: [{ node: 'root/hero', prop: 'subtitle' }] },
+        metadata: { props: ['ogTitle', 'pageDescription'] },
+        backup: { state: 'missing', backup: '/content/samsung/india/backup/lb/mobile-phone-buying-guide/samsung-fold-vs-flip' },
+        choice: { offered: true, keepImages: false, keepLinks: false, images: 6, links: 9 },
+        otherSites: [{ site: 'uk', properties: 2, repointed: true, links: [] }],
+
+        nodes: { added: [], deleted: [{ node: 'root/old-teaser' }], kept: [] },
+        uploads: [],
+        folders: [],
+        counts: { links: 9, properties: 23, assetsToCopy: 6, nodesAdded: 1, nodesDeleted: 1 }
+      };
+      CP.largeRemoval = 'A component and a property would go.';
+      CP.removalsFingerprint = removalsFingerprint(CP);
+
+
+      const DECK_ROWS = [
+        { key: 'p#01', section: 'Page properties', category: 'page', field: 'Page title', prop: 'jcr:title', value: 'Spring sale', source: 'Spring sale' },
+        { key: 'p#02', section: 'Page properties', category: 'page', field: 'Meta description', prop: 'description', value: 'Save on selected Galaxy devices this spring.', source: 'Save on selected Galaxy devices this spring.' },
+        { key: 'h#01', section: '1 · Hero', category: 'copy', field: 'Headline', prop: 'title', value: 'Big savings on Galaxy', source: 'Big savings on Galaxy' },
+        { key: 'h#02', section: '1 · Hero', category: 'copy', field: 'Body', prop: 'text', value: 'Up to 30% off a range of phones, tablets and watches.', source: 'Up to 30% off a range of phones, tablets and watches.' },
+        { key: 'h#03', section: '1 · Hero', category: 'cta', field: 'Button', prop: 'ctaText', value: 'Shop the sale', source: 'Shop the sale' },
+        { key: 'h#04', section: '1 · Hero', category: 'alt', field: 'Image alt', prop: 'alt', value: 'Galaxy S25 Ultra on a blue background', source: 'Galaxy S25 Ultra on a blue background' },
+        { key: 't#01', section: '2 · Teaser', category: 'copy', field: 'Headline', prop: 'title', value: 'Galaxy Watch7', source: 'Galaxy Watch7' },
+        { key: 't#02', section: '2 · Teaser', category: 'cta', field: 'Button', prop: 'ctaText', value: 'Learn more', source: 'Learn more' },
+        { key: 't#03', section: '2 · Teaser', category: 'a11y', field: 'Link title', prop: 'linkTitle', value: 'Learn more about Galaxy Watch7', source: 'Learn more about Galaxy Watch7' },
+        { key: 'd#01', section: '3 · Disclaimer', category: 'disclaimer', field: 'Disclaimer', prop: 'disclaimer', value: 'Offer ends 30 April. Terms apply.', source: 'Offer ends 30 April. Terms apply.' },
+        { key: 'b#01', section: 'Breadcrumb', category: 'breadcrumb', field: 'Breadcrumb', prop: 'navTitle', value: 'Offers', source: 'Offers' },
+        { key: 's#01', section: '4/4 · Static Content', category: 'static', field: 'Static HTML', prop: 'bodyHtml', value: 'Free delivery on every order', source: 'Free delivery on every order', count: 3 },
+        { key: 'x#01', section: '2 · Teaser', category: 'copy', field: 'Hidden tab label', prop: 'tabLabel', value: 'Not shown on the page', source: 'Not shown on the page', inactive: true }
+      ];
+      const DECK = {
+        page: '/content/samsung/uk/offers/spring-sale',
+        title: 'Spring sale',
+        language: 'en_GB',
+        rows: DECK_ROWS,
+        newFields: [],
+        references: [],
+        staticLeftOff: [],
+        staticCode: [],
+        scriptWarnings: []
+      };
+
+
+      const IMP = {
+        pagePath: '/content/samsung/levant_ar/offers/spring-sale',
+        title: 'Spring sale',
+        exportedFrom: '/content/samsung/uk/offers/spring-sale',
+        language: 'ar',
+        approved: 'sig-1',
+        warnings: [],
+        sections: [
+          { id: 'Page properties', static: false },
+          { id: '1 · Hero', static: false },
+          { id: '2 · Teaser', static: false },
+          { id: '4/4 · Static Content', static: true }
+        ],
+        selected: ['Page properties', '1 · Hero', '2 · Teaser'],
+        notInSheet: [],
+        staticBlocks: [],
+        rows: [
+          { section: 'Page properties', field: 'Page title', status: 'ready', source: 'Spring sale', to: 'تخفيضات الربيع' },
+          { section: '1 · Hero', field: 'Headline', status: 'ready', source: 'Big savings on Galaxy', to: 'وفورات كبيرة' },
+          { section: '1 · Hero', field: 'Button', status: 'already', source: 'Shop the sale', to: 'تسوق الآن' },
+          { section: '2 · Teaser', field: 'Headline', status: 'same', source: 'Galaxy Watch7', to: 'Galaxy Watch7' },
+          { section: '2 · Teaser', field: 'Body', status: 'untranslated', source: 'Learn more about the watch', to: '' },
+          { section: '3 · Promo', field: 'Headline', status: 'missing', source: 'Old promo headline',
+            message: 'The English this row was made from is no longer on the page.' },
+          { section: '1 · Hero', field: 'Body', status: 'changed', source: 'Up to 30% off',
+            message: 'The page has been edited since the sheet was exported. Export it again.' },
+          { section: '4/4 · Static Content', field: 'Static HTML', status: 'manual', source: 'Free delivery on every order',
+            to: 'توصيل مجاني', message: 'A Static Content block is pasted in by hand.' }
+        ],
+        writes: [{ path: 'root/hero', prop: 'title' }, { path: '', prop: 'jcr:title' }],
+        offered: [],
+        counts: {}
+      };
+
+      chrome.tabs.create = () => {};
+
+      chrome.tabs.sendMessage = async (tabId, msg) => {
+        if (msg?.type === 'aemt:session') return { state: 'in', user: 'vshaik' };
+        if (msg?.type === 'aemt:release') return { ok: true };
+        if (msg?.action === 'scan') {
+          await new Promise((r) => setTimeout(r, 600));
+          // ?clean=1 shows the page where every link is already relative.
+          const clean = new URLSearchParams(location.search).has('clean');
+          return { ok: true, result: clean ? { ...SCAN, components: [], count: 0 } : SCAN };
+        }
+        if (msg?.action === 'analyze' && (msg.feature === 'page-upsert' || msg.feature === 'page-transfer')) {
+          await new Promise((r) => setTimeout(r, 700));
+          return { ok: true, result: { ...CP, source: msg.params.source, dest: msg.params.dest } };
+        }
+        if (msg?.action === 'run' || msg?.action === 'apply') {
+          const step = (id, state, note) =>
+            window.__report?.({ type: 'aemt:report', runId: msg.runId, level: 'data', message: 'step', data: { id, state, note } });
+          for (const sec of CP.sections) {
+            step(sec.id, 'running');
+            await new Promise((r) => setTimeout(r, 500));
+            step(sec.id, 'done');
+          }
+          return {
+            ok: true,
+            result: { ...CP, done: true, title: 'Page copied', editorUrl: `/editor.html${msg.params.dest}.html` }
+          };
+        }
+        if (msg?.action === 'check' && msg.feature === 'copy-deck-import') {
+          await new Promise((r) => setTimeout(r, 700));
+          const picked = msg.params.sections;
+          return {
+            ok: true,
+            result: {
+              ...IMP,
+              pagePath: msg.params.page || IMP.pagePath,
+              selected: picked || IMP.selected,
+              writes: (picked || IMP.selected).length ? IMP.writes : []
+            }
+          };
+        }
+        if (msg?.action === 'apply' && msg.feature === 'copy-deck-import') {
+          const step = (id, state, note) =>
+            window.__report?.({ type: 'aemt:report', runId: msg.runId, level: 'data', message: 'step', data: { id, state, note } });
+          for (const id of ['check-first', 'write', 'check']) {
+            step(id, 'running');
+            await new Promise((r) => setTimeout(r, 650));
+            step(id, 'done');
+          }
+          return { ok: true, result: { written: 2, confirmed: true, byHand: [{}] } };
+        }
+        if (msg?.action === 'read' && msg.feature === 'copy-deck') {
+          await new Promise((r) => setTimeout(r, 700));
+          return { ok: true, result: { ...DECK, page: msg.params.page || DECK.page } };
+        }
+        if (msg?.action === 'readPage') {
+          await new Promise((r) => setTimeout(r, 400));
+          return { ok: true, result: { page: msg.params.source, tree: {} } };
+        }
+        if (msg?.action === 'prepare') {
+          await new Promise((r) => setTimeout(r, 400));
+          return { ok: true, result: { created: false } };
+        }
+        if (msg?.action === 'readAsset') {
+          return { ok: true, result: { base64: '', mime: 'image/jpeg', length: 1, size: 1, done: true } };
+        }
+        if (msg?.action === 'writeAsset') {
+          return { ok: true, result: {} };
+        }
+        if (msg?.type === 'aemt:session') {
+          return { state: 'in', user: 'vshaik' };
+        }
+        if (msg?.action === 'list') {
+          await new Promise((r) => setTimeout(r, 600));
+          // Echo the page asked for, so the not-a-backup case can be seen.
+          const matches = new URLSearchParams(location.search).has('same');
+          return {
+            ok: true,
+            result: {
+              ...VERSIONS,
+              page: msg.params.page || VER_PAGE,
+              drift: matches ? { changed: false, where: [] } : VERSIONS.drift
+            }
+          };
+        }
+        if (msg?.action === 'restore' || msg?.action === 'create') {
+          const step = (id, state, note) =>
+            window.__report?.({ type: 'aemt:report', runId: msg.runId, level: 'data', message: 'step', data: { id, state, note } });
+          const ids = msg.action === 'restore' ? ['save-first', 'restore', 'check'] : ['create', 'check'];
+          for (const id of ids) {
+            step(id, 'running');
+            await new Promise((r) => setTimeout(r, 800));
+            step(id, 'done');
+          }
+          const v = VERSIONS.versions.find((x) => x.id === msg.params.versionId);
+          return {
+            ok: true,
+            result: msg.action === 'restore'
+              ? { done: true, page: VER_PAGE, restored: v?.name, restoredNumber: v?.number, confirmed: true,
+                  title: 'Version restored', editorUrl: `/editor.html${VER_PAGE}.html` }
+              : { done: true, page: VER_PAGE, created: '1.4', confirmed: true, title: 'Version saved',
+                  editorUrl: `/editor.html${VER_PAGE}.html` }
+          };
+        }
+        if (msg?.action === 'analyze') {
+          await new Promise((r) => setTimeout(r, 600));
+          return { ok: true, result: BACKUP };
+        }
+        if (msg?.action === 'run') {
+          const step = (path, state) =>
+            window.__report?.({ type: 'aemt:report', runId: msg.runId, level: 'data', message: 'step', data: { path, state } });
+          const touched = [
+            ...BACKUP.create.map((c) => c.path),
+            BACKUP.copy.path
+          ];
+          for (const path of touched) {
+            step(path, 'running');
+            await new Promise((r) => setTimeout(r, 900));
+            step(path, 'done');
+          }
+          return { ok: true, result: { ...BACKUP, done: true, editorUrl: `/editor.html${BACKUP.dest}.html` } };
+        }
+        if (msg?.action === 'fix') {
+          const step = (id, state, note) =>
+            window.__report?.({ type: 'aemt:report', runId: msg.runId, level: 'data', message: 'step', data: { id, state, note } });
+          for (const id of ['check-first', 'write', 'check']) {
+            step(id, 'running');
+            await new Promise((r) => setTimeout(r, 700));
+            step(id, 'done', id === 'check' ? '1 left' : null);
+          }
+          return { ok: true, result: { done: true, page: SCAN.page, fixed: msg.params.picks.length, left: 1 } };
+        }
+        return { ok: true, result: null };
+      };
+      /* Signed in, without asking a real server. */
+      const realFetch = window.fetch;
+      window.fetch = async (u, o) =>
+        String(u).includes('currentuser.json')
+          ? new Response(JSON.stringify({ authorizableId: 'vshaik' }), { status: 200 })
+          : realFetch(u, o);
+
+      await import('../src/ui/panel.js');
+    </script>
+  </body>
+</html>

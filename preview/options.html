@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>DSY settings preview</title>
+  </head>
+  <body style="margin:0">
+    <script type="module">
+      /* A stand-in for Chrome, so the real settings page can be looked at in
+         a plain browser tab. Nothing here ships. */
+      const store = {
+        'aemt.settings': {
+          origins: ['https://p6-ap-author.samsung.com', 'https://p6-eu-author.samsung.com'],
+          settingsVersion: 2
+        },
+        'aemt.copyDeck.added': [{ component: 'cm-g-promo-banner', prop: 'cardTitle', group: 'copy' }],
+        'aemt.copyDeck.ignored': [{ component: '*', prop: 'analyticsLabel' }]
+      };
+      window.chrome = {
+        permissions: { contains: async () => true, request: async () => true, remove: async () => true },
+        runtime: { getURL: (p) => '/' + p, openOptionsPage() {} },
+        storage: {
+          onChanged: { addListener() {} },
+          sync: {
+            get: async (k) => (k ? { [k]: store[k] } : { ...store }),
+            set: async (o) => Object.assign(store, o)
+          },
+          local: {
+            get: async (k) => (k ? { [k]: store[k] } : { ...store }),
+            set: async (o) => Object.assign(store, o)
+          }
+        },
+        downloads: { download: async () => 1 }
+      };
+
+      const res = await fetch('/src/ui/options.html');
+      const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+      for (const link of doc.querySelectorAll('link[rel=stylesheet]')) {
+        const l = document.createElement('link');
+        l.rel = 'stylesheet';
+        l.href = '/src/ui/' + link.getAttribute('href');
+        document.head.append(l);
+      }
+      const style = document.createElement('style');
+      style.textContent = [...doc.querySelectorAll('style')].map((s) => s.textContent).join('\n');
+      document.head.append(style);
+      document.body.innerHTML = doc.body.innerHTML.replace(/<script[\s\S]*?<\/script>/g, '');
+      await import('/src/ui/options.js');
+    </script>
+  </body>
+</html>

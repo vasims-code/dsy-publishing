@@ -1,0 +1,240 @@
+{
+"jcr:created": "Sun Nov 01 2026 22:16:52 GMT+0900",
+"jcr:createdBy": "text 18",
+"sling:resourceType": "samsung/components/structure/consumer/global/page-static-gnb",
+"jcr:title": "text 50",
+"cq:lastModified": "Sun Nov 01 2026 22:21:43 GMT+0900",
+"cq:lastModifiedBy": "text 18",
+"jcr:primaryType": "cq:PageContent",
+"cq:template": "/conf/consumer/settings/wcm/templates/page-static-gnb",
+"root": {
+"sling:resourceType": "wcm/foundation/components/responsivegrid",
+"jcr:primaryType": "nt:unstructured",
+"responsivegrid": {
+"sling:resourceType": "wcm/foundation/components/responsivegrid",
+"jcr:primaryType": "nt:unstructured",
+"pd_g_feature_benefit": {
+"jcr:primaryType": "nt:unstructured"
+},
+"cm_g_text_block": {
+"jcr:primaryType": "nt:unstructured"
+},
+"cm_g_video_copy_copy": {
+"jcr:primaryType": "nt:unstructured"
+},
+"cm_g_blank_space": {
+"jcr:primaryType": "nt:unstructured"
+},
+"cm_g_text_block_715840965": {
+"jcr:primaryType": "nt:unstructured"
+},
+"pd_g_feature_benefit_1866504922": {
+"jcr:primaryType": "nt:unstructured",
+"carousel1": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel2": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel3": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel4": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel5": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel6": {
+"jcr:primaryType": "nt:unstructured"
+}
+},
+"pd_g_feature_benefit_685012303": {
+"jcr:primaryType": "nt:unstructured",
+"carousel1": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel2": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel3": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel4": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel5": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel6": {
+"jcr:primaryType": "nt:unstructured"
+}
+},
+"pd_g_feature_benefit_1920793812": {
+"jcr:primaryType": "nt:unstructured",
+"carousel1": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel2": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel3": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel4": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel5": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel6": {
+"jcr:primaryType": "nt:unstructured"
+}
+},
+"pd_g_feature_benefit_872792557": {
+"jcr:primaryType": "nt:unstructured",
+"carousel1": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel2": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel3": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel4": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel5": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel6": {
+"jcr:primaryType": "nt:unstructured"
+}
+},
+"pd_g_feature_benefit_720581842": {
+"jcr:primaryType": "nt:unstructured",
+"carousel1": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel2": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel3": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel4": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel5": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel6": {
+"jcr:primaryType": "nt:unstructured"
+},
+"disclaimerList": {
+"jcr:primaryType": "nt:unstructured",
+"item0": {
+"jcr:primaryType": "nt:unstructured"
+}
+}
+},
+"pd_g_feature_benefit_1371538951": {
+"jcr:primaryType": "nt:unstructured",
+"carousel1": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel2": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel3": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel4": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel5": {
+"jcr:primaryType": "nt:unstructured"
+},
+"carousel6": {
+"jcr:primaryType": "nt:unstructured"
+}
+},
+"cm_g_text_block_2094483390": {
+"jcr:primaryType": "nt:unstructured"
+},
+"pd_g_feature_benefit_1048227456": {
+"jcr:primaryType": "nt:unstructured",
+"list": {
+"jcr:primaryType": "nt:unstructured",
+"item0": {
+"jcr:primaryType": "nt:unstructured"
+}
+}
+},
+"cm_g_text_block_1604964357": {
+"jcr:primaryType": "nt:unstructured"
+},
+"ho_g_showcase_card_c": {
+"jcr:primaryType": "nt:unstructured",
+"setting": {
+"jcr:primaryType": "nt:unstructured"
+},
+"column": {
+"jcr:primaryType": "nt:unstructured",
+"item1": {
+"jcr:primaryType": "nt:unstructured"
+},
+"item2": {
+"jcr:primaryType": "nt:unstructured"
+},
+"item3": {
+"jcr:primaryType": "nt:unstructured"
+},
+"item4": {
+"jcr:primaryType": "nt:unstructured"
+},
+"item5": {
+"jcr:primaryType": "nt:unstructured"
+},
+"item6": {
+"jcr:primaryType": "nt:unstructured"
+},
+"item7": {
+"jcr:primaryType": "nt:unstructured"
+},
+"item8": {
+"jcr:primaryType": "nt:unstructured"
+}
+}
+},
+"cm_g_text_block_482569836": {
+"jcr:primaryType": "nt:unstructured",
+"linkAction_list": {
+"jcr:primaryType": "nt:unstructured",
+"item0": {
+"jcr:primaryType": "nt:unstructured"
+}
+}
+},
+"cm_g_local_benefit_c_567279558": {
+"jcr:primaryType": "nt:unstructured",
+"column1": {
+"jcr:primaryType": "nt:unstructured"
+},
+"column2": {
+"jcr:primaryType": "nt:unstructured"
+},
+"column3": {
+"jcr:primaryType": "nt:unstructured"
+},
+"column4": {
+"jcr:primaryType": "nt:unstructured"
+}
+},
+"cm_g_static_content_": {
+"jcr:primaryType": "nt:unstructured"
+}
+}
+}
+}
