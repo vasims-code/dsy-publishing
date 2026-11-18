@@ -382,7 +382,8 @@ export function targetsOf(components) {
  * What a lookup says about a target. `answer` is AemClient.lookup's result;
  * `lower` is the answer for the same path in lower case, when that was asked.
  *
- *   ok           it is there - for a page, a cq:Page with content
+ *   ok           it is there - for a page, a cq:Page with content, or a
+ *                redirect that landed on one
  *   missing      404: nothing is there. This is a broken link.
  *   case         nothing at the path as written, but there in lower case
  *   notpage      something is there, but not a page: a folder, or a page
@@ -396,6 +397,11 @@ export function verdict(target, answer, lower = null) {
     return { state: 'missing', note: 'nothing is at this path on author' };
   }
   if (answer.state === 'forbidden') return { state: 'forbidden', note: 'your account cannot read this path' };
+  /* The server sent the request on and answered at the other end. A redirect
+     is how a page is retired, not how one breaks: the link still lands
+     somewhere that renders, and a dead end would have come back as the 404
+     above. So it is OK, and the screen says where it goes. */
+  if (answer.state === 'redirected') return { state: 'ok', redirect: answer.to };
   if (answer.state !== 'yes') return { state: 'error', note: answer.note || 'no answer' };
 
   const json = answer.json || {};
@@ -408,7 +414,9 @@ export function verdict(target, answer, lower = null) {
     return {
       state: 'ok',
       title: typeof jc['jcr:title'] === 'string' ? jc['jcr:title'] : null,
-      redirect: typeof jc.redirectTarget === 'string' && jc.redirectTarget.trim() ? jc.redirectTarget.trim() : null
+      /* Its own redirect property if it has one, else where the request was
+         actually sent - both are "this link goes somewhere else". */
+      redirect: (typeof jc.redirectTarget === 'string' && jc.redirectTarget.trim() ? jc.redirectTarget.trim() : null) || answer.to || null
     };
   }
 

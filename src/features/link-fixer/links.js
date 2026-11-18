@@ -162,6 +162,37 @@ export function findInString(s, hosts) {
   return out;
 }
 
+/* A samsung.com host that is a working copy, not the live site: p6-qa, p6-ap-author,
+   stg-images, qa-, dev-, uat-, test-. A link to one works for the author and breaks
+   for a visitor, and it cannot be made relative - its path is not the live path. */
+const STRAY_HOST = /^(?:p\d+|stg|stage|staging|qa|dev|uat|test|preview)(?:[.-][\w-]*)?\.samsung\.com$/i;
+
+const strayRe = /(?:https?:)?\/\/([a-z0-9-]+(?:\.[a-z0-9-]+)*\.samsung\.com)(?::\d+)?(?=[/?#"'\\\s)\],;!]|$)([^"'\s<>\\]*)/gi;
+
+/**
+ * Links to a staging or QA samsung.com host - as { start, from, host, context, text }.
+ * Never rewritten: only listed, so the author can replace them with the live page.
+ * A host in `hosts` (this author instance, the ones in settings) is a link the fixer
+ * already makes relative, so it is not reported here.
+ */
+export function findStraysInString(s, hosts = []) {
+  if (typeof s !== 'string' || !s) return [];
+  const mine = new Set(hosts.map((h) => h.toLowerCase()));
+  const out = [];
+  for (const m of s.matchAll(strayRe)) {
+    const host = m[1].toLowerCase();
+    if (!STRAY_HOST.test(host) || mine.has(host)) continue;
+    const prev = s[m.index - 1];
+    if (prev && /[\w.\-/@]/.test(prev)) continue;
+    const rest = trimTail(m[2]);
+    const from = m[0].slice(0, m[0].length - (m[2].length - rest.length));
+    const context = linkContext(s, m.index, m.index + from.length);
+    if (!context) continue;
+    out.push({ start: m.index, from, host, context, text: context === 'attribute' ? anchorText(s, m.index) : null });
+  }
+  return out;
+}
+
 /** The same for a property value of any shape: `index` is the array element, -1 for a single value. */
 export function findInValue(value, hosts) {
   if (Array.isArray(value)) {
@@ -214,6 +245,7 @@ const isNode = (v) => v && typeof v === 'object' && !Array.isArray(v);
  */
 export function scanContent(content, hosts) {
   const components = [];
+  const strays = [];
   let nodes = 0;
   const walk = (node, rel, inherited) => {
     nodes++;
@@ -223,6 +255,19 @@ export function scanContent(content, hosts) {
     for (const [prop, value] of Object.entries(node)) {
       if (isNode(value) || SKIP_PROPS.test(prop)) continue;
       for (const f of findInValue(value, hosts)) links.push({ prop, ...f, value });
+      const list = Array.isArray(value) ? value : [value];
+      list.forEach((v, i) => {
+        for (const f of findStraysInString(v, hosts)) {
+          strays.push({
+            node: rel,
+            resourceType: node['sling:resourceType'] || null,
+            type: String(node['sling:resourceType'] || '').split('/').pop() || null,
+            prop,
+            index: Array.isArray(value) ? i : -1,
+            ...f
+          });
+        }
+      });
     }
     if (links.length) {
       components.push({
@@ -242,5 +287,5 @@ export function scanContent(content, hosts) {
   for (const [name, child] of Object.entries(content || {})) {
     if (isNode(child) && !isPagePropertyNode(name)) walk(child, name, pageLive);
   }
-  return { components, nodes };
+  return { components, strays, nodes };
 }

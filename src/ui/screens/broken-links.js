@@ -249,10 +249,9 @@ export async function render(ctx) {
     view.append(field);
 
     const how = titled('What gets checked', [
-      howRow('link', 'Every CTA and link in the page content, and the canonical and redirect in its properties.'),
-      howRow('image', state.settings?.linkCheckAssets === false ? 'Images are not checked - turn that on in Settings.' : 'Every image and file the page takes from the DAM.'),
-      howRow('globe', 'Links to other sites are listed but not checked: only this author instance is asked.'),
-      howRow('deck', 'Each link is listed under its component and field, as the copy deck names them.')
+      howRow('link', 'Every button and link on the page, and the page’s canonical and redirect settings.'),
+      howRow('globe', 'Links to other websites, like YouTube, are listed but not checked. Only pages and files on this AEM site are checked.'),
+      howRow('deck', 'Each problem is listed with the component it is in and the field name, so you know exactly where to go to fix it.')
     ]);
     view.append(how);
 

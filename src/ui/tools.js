@@ -1,22 +1,17 @@
 /**
  * What the home screen offers.
  *
- * The home screen names seven tools; the engine has nine features, because two
+ * The home screen names six tools; the engine has ten features, because three
  * of the tools ask one more question before they start. "Copy a page" covers
  * copying within a server and from another one; "Copy deck" covers the export
- * and the import. The chooser screens hold that question, so the home screen
- * stays one row a tool however many features sit behind them.
+ * and the import; "Links" covers the three tools that work on the links of a
+ * page. The chooser screens hold that question, so the home screen stays one
+ * row a tool however many features sit behind them.
+ *
+ * The order here is the order on the home screen - the user chose it.
  */
 
 export const TOOLS = [
-  {
-    id: 'copy-page',
-    icon: 'transfer',
-    title: 'Copy a page',
-    summary: 'From this server or another one',
-    does: 'write',
-    features: ['page-upsert', 'page-transfer']
-  },
   {
     id: 'backup',
     icon: 'folder',
@@ -26,20 +21,28 @@ export const TOOLS = [
     features: ['page-copy']
   },
   {
+    id: 'copy-page',
+    icon: 'transfer',
+    title: 'Copy a page',
+    summary: 'From this server or another one',
+    does: 'write',
+    features: ['page-upsert', 'page-transfer']
+  },
+  {
+    id: 'links',
+    icon: 'link',
+    title: 'Links',
+    summary: 'Find broken links, or fix how links are written',
+    does: 'read-write',
+    features: ['broken-links', 'link-fixer', 'site-code-fixer']
+  },
+  {
     id: 'copy-deck',
     icon: 'deck',
     title: 'Copy deck',
     summary: 'Export page text, import translations',
     does: 'read-write',
     features: ['copy-deck', 'copy-deck-import']
-  },
-  {
-    id: 'link-fixer',
-    icon: 'link',
-    title: 'Relative Link Fixer',
-    summary: 'Turn full samsung.com links into relative links',
-    does: 'write',
-    features: ['link-fixer']
   },
   {
     id: 'arabic-fixer',
@@ -57,14 +60,6 @@ export const TOOLS = [
     does: 'write',
     features: ['page-versions']
   },
-  {
-    id: 'broken-links',
-    icon: 'unlink',
-    title: 'Broken Link Finder',
-    summary: 'Find CTAs and links missing on author',
-    does: 'read',
-    features: ['broken-links']
-  }
 ];
 
 export const DOES_LABEL = { read: 'Reads only', write: 'Writes', 'read-write': 'Reads + writes' };

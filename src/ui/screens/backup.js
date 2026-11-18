@@ -24,7 +24,8 @@ import {
   notice,
   stepBar,
   toTop,
-  openInAem
+  openInAem,
+  whatHappens
 } from '../parts.js';
 import { logBox, makeLog } from '../log.js';
 import { runAction } from '../run.js';
@@ -200,18 +201,12 @@ export async function render(ctx) {
     view.append(targetField);
     showTarget();
 
-    view.append(label('What happens'));
-    const what = (iconName, text) => {
-      const r = el('div', 'what-row');
-      r.append(icon(iconName, 18, 1.9), el('div', null, text));
-      return r;
-    };
     view.append(
-      list([
-        what('folder', 'Goes into the backup folder. Missing pages on the way are created empty.'),
-        what('deck', 'Only this page is copied — child pages are not.'),
-        what('link', 'Internal links stay exactly as they are.'),
-        what('history', 'If a backup already exists, only the differences are written.')
+      ...whatHappens([
+        ['folder', 'Goes into the backup folder. Missing pages on the way are created empty.'],
+        ['deck', 'Only this page is copied — child pages are not.'],
+        ['link', 'Internal links stay exactly as they are.'],
+        ['history', 'If a backup already exists, only the differences are written.']
       ])
     );
 
@@ -290,8 +285,8 @@ export async function render(ctx) {
       view.append(
         notice(
           'warn',
-          'That is a lot to remove',
-          `${sync.largeRemoval} Check these are the right pages.`,
+          'This will delete a lot from the backup page',
+          `${sync.largeRemoval} If you picked the wrong page, content could be lost. Check the list above before you go on.`,
           'warn'
         )
       );
@@ -299,13 +294,13 @@ export async function render(ctx) {
       const box = el('input');
       box.type = 'checkbox';
       box.checked = own.ackRemovals;
-      box.setAttribute('aria-label', 'These are the right pages - remove them anyway');
+      box.setAttribute('aria-label', 'I have checked - delete these from the backup page');
       box.addEventListener('change', () => {
         own.ackRemovals = box.checked;
         redraw();
       });
       const text = el('div', 'check-text');
-      text.append(el('div', 'check-title', 'These are the right pages — remove them anyway'));
+      text.append(el('div', 'check-title', 'I have checked - delete these from the backup page'));
       wrap.append(box, text);
       view.append(list([wrap]));
     }
@@ -320,7 +315,7 @@ export async function render(ctx) {
           s.upToDate
             ? button('Nothing to update', 'write', null, { disabled: true })
             : button(
-                heldBack ? 'Tick the removals box to continue' : exists ? 'Update the backup' : 'Create the backup',
+                heldBack ? 'Tick the box above to continue' : exists ? 'Update the backup' : 'Create the backup',
                 'write',
                 doRun,
                 { iconName: 'pen', disabled: heldBack }

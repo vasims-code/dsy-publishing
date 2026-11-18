@@ -64,7 +64,8 @@ export function changeKind(from, to, ctx) {
   if (all.length && all.every((s) => isAssetRef(s) || isLinkRef(s))) return 'link';
   if (ctx?.rules?.length && !sameValue(from, to) && sameValue(rewriteValue(from, ctx), to)) {
     // Only images re-pointed is an image change; any link - to this site or another one - makes it a link change.
-    const imagesOnly = { ...ctx, rules: ctx.rules.filter((r) => r.id === 'dam') };
+    // 'dam:<folder>' is another DAM folder ticked on the review - images too.
+    const imagesOnly = { ...ctx, rules: ctx.rules.filter((r) => r.id === 'dam' || r.id.startsWith('dam:')) };
     return imagesOnly.rules.length && sameValue(rewriteValue(from, imagesOnly), to) ? 'image' : 'link';
   }
   return 'other';

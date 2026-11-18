@@ -28,7 +28,7 @@ import { abort, fromBase64, toBase64 } from '../../core/aem-client.js';
 import { alignTrees, destResolver, relabel } from '../../core/align.js';
 import { binariesByHand, diff, largeRemovalOf, metadataFor, relLabel } from '../../core/diff.js';
 import {
-  assertWrite, executeDiff, partialRefusal, pool, readPageTree, unconfirmedWarning
+  assertWrite, executeDiff, lockBlocker, lockOwnerOf, partialRefusal, pool, readPageTree, unconfirmedWarning
 } from '../../core/execute.js';
 import { humanize, insideBackupFolder, nameOf, norm, parentOf, segs } from '../../core/paths.js';
 import {
@@ -571,6 +571,11 @@ async function analyze({ client, settings, report, params }) {
 
   /* ---- refusals -------------------------------------------------------- */
   const blockers = [];
+  /* The destination, on the other instance, locked by someone else: it would
+     take the write, answer 200 and keep its old content. Found here, so it is
+     on the review rather than at the end of a run. */
+  const lockedBy = await lockOwnerOf(client, dest);
+  if (lockedBy) blockers.push(lockBlocker(dest, lockedBy));
   if (missingTemplates.length) {
     blockers.push(
       `The source page's template is not on this instance: ${missingTemplates.map((t) => t.path).join(', ')}. ` +

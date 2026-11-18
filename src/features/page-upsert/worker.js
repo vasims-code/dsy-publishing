@@ -31,7 +31,7 @@ import {
 import { insideBackupFolder, nameOf, norm, parentOf, segs } from '../../core/paths.js';
 import { binariesByHand, diff, isAssetRef, largeRemovalOf, metadataFor, relLabel } from '../../core/diff.js';
 import {
-  assertWrite, executeDiff, partialRefusal, pool, readPageTree, unconfirmedWarning
+  assertWrite, executeDiff, lockBlocker, lockOwnerOf, partialRefusal, pool, readPageTree, unconfirmedWarning
 } from '../../core/execute.js';
 import {
   assetMatcher,
@@ -64,17 +64,26 @@ const DEFAULT_SHOP_HOSTS = ['shop.samsung.com'];
 
 /* -------------------------------------------------------------- planning */
 
-async function planAssets(client, srcTree, sites, copyAssets, overwrite) {
+/**
+ * `roots` are the DAM folders whose images go across: the source site's own,
+ * and any other folder the review ticked (see otherDamIn). Each lands under
+ * the destination's DAM folder at the same relative path - where the rewrite
+ * rules send the reference that names it.
+ */
+async function planAssets(client, srcTree, sites, copyAssets, overwrite, roots = [sites.srcDam]) {
   const re = assetMatcher(sites.srcDam);
-  const found = new Set();
-  for (const rel of Object.keys(srcTree)) {
-    for (const p of Object.keys(srcTree[rel])) {
-      for (const a of assetsIn(srcTree[rel][p], re)) found.add(a);
+  const found = new Map();
+  for (const root of roots) {
+    const m = assetMatcher(root);
+    for (const rel of Object.keys(srcTree)) {
+      for (const p of Object.keys(srcTree[rel])) {
+        for (const a of assetsIn(srcTree[rel][p], m)) if (!found.has(a)) found.set(a, root);
+      }
     }
   }
 
-  const assets = await pool([...found].sort(), PROBE_CONCURRENCY, async (src) => {
-    const dest = sites.destDam + src.slice(sites.srcDam.length);
+  const assets = await pool([...found.keys()].sort(), PROBE_CONCURRENCY, async (src) => {
+    const dest = sites.destDam + src.slice(found.get(src).length);
     const at = await client.probe(src);
 
     if (at === 'forbidden' || at === 'error') {
@@ -201,8 +210,46 @@ function optionsFrom(settings, params) {
      * with; these are the sites unticked on the review, whose links are left as they are. */
     keepSites: (Array.isArray(params.keepSites) ? params.keepSites : String(params.keepSites || '').split(','))
       .map((s) => String(s).trim())
+      .filter(Boolean),
+    /* Other DAM folders ticked on the review: their images are uploaded to the
+     * destination's DAM folder and re-pointed there. Unticked to start with -
+     * a folder outside the source site may be shared on purpose. */
+    copyDam: (Array.isArray(params.copyDam) ? params.copyDam : String(params.copyDam || '').split(','))
+      .map((s) => String(s).trim().replace(/^\/+|\/+$/g, ''))
       .filter(Boolean)
   };
+}
+
+/**
+ * DAM folders, other than the source's and the destination's, that the page
+ * takes images from - each with its images and how often each is named.
+ *
+ * The common case is a site whose page folder and DAM folder are named
+ * differently: /content/samsung/ae_ar keeps its images under
+ * /content/dam/samsung/ae. Read off the page, one folder per first segment
+ * under the brand's DAM root.
+ */
+function otherDamIn(tree, sites, skip = () => false) {
+  const re = assetMatcher(sites.damRoot);
+  const inside = (a, root) => a === root || a.startsWith(`${root}/`);
+  const found = new Map();
+  for (const props of Object.values(tree)) {
+    for (const [prop, v] of Object.entries(props)) {
+      if (skip(prop, v)) continue;
+      for (const a of assetsIn(v, re)) {
+        if (inside(a, sites.srcDam) || inside(a, sites.destDam)) continue;
+        const folder = a.slice(sites.damRoot.length + 1).split('/')[0];
+        /* A path that is the folder itself, or a source or destination written
+         * as two segments (in/en) under it: re-pointing /in would rewrite them too. */
+        const under = `${sites.damRoot}/${folder}/`;
+        if (!folder || a === `${sites.damRoot}/${folder}` || sites.srcDam.startsWith(under) || sites.destDam.startsWith(under)) continue;
+        if (!found.has(folder)) found.set(folder, new Map());
+        const images = found.get(folder);
+        images.set(a, (images.get(a) || 0) + 1);
+      }
+    }
+  }
+  return found;
 }
 
 /**
@@ -341,9 +388,35 @@ export async function buildPlan(client, settings, params) {
    * check also means no property is held back for naming an image that is
    * missing: the value is copied exactly as the source has it. The same goes
    * for images kept at the shared source site: nothing is copied, so nothing is probed. */
+  /* Images from other DAM folders - /content/dam/samsung/ae on an /ae_ar page.
+   * Offered, never assumed: each folder is a box on the review, unticked, and
+   * only a ticked one is uploaded and re-pointed. Not offered where nothing is
+   * re-pointed at all, or where the source's images are being kept. */
+  const never = new Set([...SYSTEM_PROPS, ...opts.keepAtDest]);
+  const damFound = sites.enabled && !params.skipAssets && !keep.images
+    ? otherDamIn(src.tree, sites, (prop) => never.has(prop))
+    : new Map();
+  const copyDam = [...damFound.keys()].filter((f) => opts.copyDam.includes(f));
+
   const { assets, folders, missing, unreadable, re } = params.skipAssets || keep.images
     ? { assets: [], folders: [], missing: new Set(), unreadable: [], re: assetMatcher(sites.srcDam) }
-    : await planAssets(client, src.tree, sites, opts.copyAssets, opts.overwriteAssets);
+    : await planAssets(client, src.tree, sites, opts.copyAssets, opts.overwriteAssets, [
+        sites.srcDam,
+        ...copyDam.map((f) => `${sites.damRoot}/${f}`)
+      ]);
+
+  const byPath = new Map(assets.map((a) => [a.src, a]));
+  const otherDam = [...damFound]
+    .sort((a, b) => b[1].size - a[1].size || a[0].localeCompare(b[0]))
+    .map(([folder, images]) => ({
+      folder,
+      root: `${sites.damRoot}/${folder}`,
+      to: sites.destDam,
+      copied: copyDam.includes(folder),
+      images: [...images]
+        .map(([path, uses]) => ({ path, uses, action: byPath.get(path)?.action || null }))
+        .sort((a, b) => a.path.localeCompare(b.path))
+    }));
 
   /* Links to other sites - /uk from a /global page - re-pointed at the destination
    * unless unticked. Only a site the page links to AND that AEM has: its
@@ -352,7 +425,6 @@ export async function buildPlan(client, settings, params) {
    * one - asked of the repository, not looked up in a list. A property the run
    * never writes is not counted: a system or kept-at-destination property, or
    * one held back for naming an image missing at the source. */
-  const never = new Set([...SYSTEM_PROPS, ...opts.keepAtDest]);
   const heldBack = (v) => missing.size > 0 && assetsIn(v, re).some((a) => missing.has(a));
   const others = new Map();
   for (const [site, o] of otherSitesIn(src.tree, sites, (prop, v) => never.has(prop) || heldBack(v))) {
@@ -360,8 +432,8 @@ export async function buildPlan(client, settings, params) {
   }
   const also = [...others.keys()].filter((s) => !opts.keepSites.includes(s));
   const ctx =
-    keep.images || keep.links || also.length
-      ? buildRules(sites, { images: !keep.images, links: !keep.links, alsoSites: also })
+    keep.images || keep.links || also.length || copyDam.length
+      ? buildRules(sites, { images: !keep.images, links: !keep.links, alsoSites: also, alsoDam: copyDam })
       : full;
   const otherSites = [...others.values()]
     .sort((a, b) => b.properties - a.properties || a.site.localeCompare(b.site))
@@ -420,6 +492,12 @@ export async function buildPlan(client, settings, params) {
   /* Reasons to refuse, gathered rather than thrown, so the analysis can show
    * all of them at once instead of one per attempt. */
   const blockers = [];
+  /* A locked destination takes the write, answers 200 and keeps its old
+     content, so it has to be found here - at the write it is already too late
+     to tell anyone before they press the button. A page about to be created
+     has nothing to read, and a lock of your own is not in the way. */
+  const lockedBy = await lockOwnerOf(client, dest);
+  if (lockedBy) blockers.push(lockBlocker(dest, lockedBy));
   if (unreadable.length) {
     blockers.push(
       `${unreadable.length} asset(s) could not be read (403). A permissions error is not the same ` +
@@ -438,7 +516,7 @@ export async function buildPlan(client, settings, params) {
 
   return {
     source, dest, mode, sites, ctx, opts, assets, folders, ...d,
-    blockers, largeRemoval, truncationRisk, choice, otherSites, site
+    blockers, largeRemoval, truncationRisk, choice, otherSites, otherDam, site
   };
 }
 
@@ -504,6 +582,8 @@ export function summarise(plan) {
     choice: plan.choice || { offered: false },
     // Links to sites that are neither source nor destination, each with its own tick box.
     otherSites: plan.otherSites || [],
+    // Images in DAM folders other than the source site's, each folder with its own tick box.
+    otherDam: plan.otherDam || [],
     site: siteSummary(plan.site, plan.siteChanges, { applied: !plan.opts.keepSiteValues, preview: previewValue }),
     // An existing page's own properties that would change: the review asks before they are written.
     metadata: metadataFor(plan.mode, plan, previewValue),
@@ -823,6 +903,14 @@ function announce(report, s) {
         o.repointed
           ? `Links to /${o.site} are re-pointed at /${s.rewrite.destSite} too (${o.properties} propert${o.properties === 1 ? 'y' : 'ies'}) - untick under "Links to /${o.site}" to leave them.`
           : `Links to /${o.site} are left as they are (${o.properties} propert${o.properties === 1 ? 'y' : 'ies'}).`
+      );
+    }
+    for (const f of s.otherDam) {
+      report(
+        'info',
+        f.copied
+          ? `${f.images.length} image(s) from ${f.root} are copied into ${f.to} and re-pointed there.`
+          : `${f.images.length} image(s) from ${f.root} are left as they are - tick "Copy images from ${f.root}" to copy them into ${f.to}.`
       );
     }
   } else {

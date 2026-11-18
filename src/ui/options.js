@@ -379,11 +379,6 @@ function renderSettings() {
   );
 
   $('links-box').replaceChildren(
-    check(
-      'linkCheckAssets',
-      'Check images and files too',
-      'Every /content/dam/… path on the page is looked up on author. Off, they are listed as not checked.'
-    ),
     field(
       'linkSiteHosts',
       'Hosts that are this site',
@@ -434,7 +429,6 @@ async function save() {
     arabicUnits: listValue('arabicUnits', DEFAULT_UNITS),
     arabicNames: listValue('arabicNames', DEFAULT_NAMES),
 
-    linkCheckAssets: ticked('linkCheckAssets'),
     linkSiteHosts: val('linkSiteHosts').trim()
   });
   renderSettings();
@@ -528,8 +522,19 @@ function sayDefaults(text) {
 
 /* ---------------------------------------------------------------- boot */
 
+/** The installed version, from the manifest Chrome loaded - not a copy of it that could drift. */
+function showVersion() {
+  const version = globalThis.chrome?.runtime?.getManifest?.()?.version;
+  if (!version) return;
+  const badge = $('version');
+  badge.textContent = `Version ${version}`;
+  badge.title = 'The installed version of DSY';
+  badge.hidden = false;
+}
+
 async function boot() {
   $('brand').append(icon('yard', 20, 2));
+  showVersion();
 
   watchTheme();
   settings = await loadSettings();

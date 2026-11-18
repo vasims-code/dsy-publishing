@@ -26,7 +26,8 @@ import {
   runStep,
   startingStep,
   stepBar,
-  toTop
+  toTop,
+  whatHappens
 } from '../parts.js';
 import { logBox, makeLog } from '../log.js';
 import { runAction } from '../run.js';
@@ -233,6 +234,15 @@ export async function render(ctx) {
     );
     view.append(field);
 
+    view.append(
+      ...whatHappens([
+        ['link', 'Finds links that use the full website address, like https://www.samsung.com/uk/offers (or the address of the author server).'],
+        ['pen', 'Shows each one with the short form it would become: /uk/offers instead of https://www.samsung.com/uk/offers.'],
+        ['check', 'Fixes only the links you tick, then reads the page back to check.'],
+        ['globe', 'Links to other sites (YouTube, shop.samsung.com, images.samsung.com) are left alone. Page properties are not checked.']
+      ])
+    );
+
     const scanBtn = button('Scan this page', 'primary', doScan, {
       disabled: !own.page.startsWith('/content/')
     });
@@ -257,16 +267,19 @@ export async function render(ctx) {
     const lookUnticked = needLook.filter((r) => !own.ticked.has(r.key)).length;
     const nothingFound = !rows.length;
 
+    const strays = Array.isArray(own.scan.strays) ? own.scan.strays : [];
+
     view.append(
       nothingFound
         ? notice(
             'ok',
             'Nothing to fix',
-            `Every link on this page is already relative. ${own.scan.nodes} nodes were read and nothing was written.`,
+            `No full samsung.com links to make relative. ${own.scan.nodes} nodes were read and nothing was written.`,
             'check'
           )
         : notice('read', 'Preview only · nothing is written', 'You confirm before anything changes.')
     );
+    if (strays.length) view.append(...strayBlock(strays));
 
     const page = el('div', 'card page-summary');
     const text = el('div', 'tool-text');
@@ -652,6 +665,52 @@ function linkRow(row, ticked, redraw) {
   text.append(where, url);
   wrap.append(box, text);
   return wrap;
+}
+
+/**
+ * Links to a staging or QA host (p6-qa.samsung.com ...). They are never changed
+ * here - a relative path would keep a path that is not the live one - so they
+ * are listed for the author to replace by hand.
+ */
+function strayBlock(strays) {
+  const hosts = [...new Set(strays.map((s) => s.host))];
+  const rows = strays.map((s) => {
+    const text = el('div', 'link-text');
+    const where = el('div', 'link-where link-where--wrap');
+    where.append(
+      el('span', null, `${s.title || s.type || s.node} · ${s.prop}${s.text ? ` · "${s.text}"` : ''}`),
+      el('span', 'link-tag', 'Not live')
+    );
+    // The host is marked and the rest of the link follows in full.
+    const at = s.from.toLowerCase().indexOf(s.host);
+    const url = el('div', 'link-url');
+    if (at < 0) url.append(s.from);
+    else {
+      url.append(
+        s.from.slice(0, at),
+        el('span', 'link-host', s.from.slice(at, at + s.host.length)),
+        s.from.slice(at + s.host.length)
+      );
+    }
+    text.append(where, url);
+    const row = el('div', 'link-row');
+    row.append(text);
+    return row;
+  });
+  return [
+    notice(
+      'warn',
+      `${plural(strays.length, 'link')} need${strays.length === 1 ? 's' : ''} a manual update`,
+      `${strays.length === 1 ? 'This link points' : 'These links point'} to ${hosts.join(', ')}, a staging or QA site, ` +
+        `and ${strays.length === 1 ? 'its path differs' : 'their paths differ'} from the live site. ` +
+        `${strays.length === 1 ? 'It' : 'They'} cannot be converted automatically, so ` +
+        `${strays.length === 1 ? 'it is' : 'they are'} not included in the fix. ` +
+        `Please update ${strays.length === 1 ? 'it' : 'them'} by hand to the live page, then scan again.`,
+      'warn'
+    ),
+    label('Links to update manually'),
+    list(rows)
+  ];
 }
 
 const hostOf = (origin) => String(origin || '').replace(/^https?:\/\//, '');

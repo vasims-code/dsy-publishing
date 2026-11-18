@@ -183,11 +183,10 @@ export const DEFAULT_SETTINGS = {
   arabicUnits: '',
   arabicNames: '',
 
-  /* broken-links. Also look up the images and files the page takes from the
-   * DAM; and the hosts, comma separated, that are this site besides
+  /* broken-links. The hosts, comma separated, that are this site besides
    * www.samsung.com and the author instances above - a full URL to one of
-   * them is a link into this content tree and is checked on author. */
-  linkCheckAssets: true,
+   * them is a link into this content tree and is checked on author. Images
+   * and files are never checked. */
   linkSiteHosts: '',
 
   /* Which of the one-time updates below have been applied to stored settings. */

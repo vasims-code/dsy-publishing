@@ -281,6 +281,58 @@ export function assertNotStripping(d, propDeletes, page, { acked = false } = {})
 }
 
 /**
+ * A page someone else has locked refuses the write and still answers 200,
+ * saying nothing about why. Read back, that came out as "AEM accepted the
+ * write and answered 200, but not one of the changes checked is on the page",
+ * which names the lock last among three guesses - so the author went looking
+ * for the wrong thing. The lock is a fact that can be read first, so it is.
+ *
+ * A lock of your own is not in the way: AEM lets you write through it. A
+ * destination that does not exist yet has no properties to read, and a read
+ * that fails is left to the write to run into - this is a better message, not
+ * another way for a run to stop.
+ *
+ * Reads `jcr:lockOwner` of the page's jcr:content, which is where the Relative
+ * Link Fixer and the Arabic fixer already read it.
+ */
+export async function lockOwnerOf(client, page) {
+  let props = null;
+  try {
+    props = await client.readProps(`${page}/jcr:content`);
+  } catch {
+    // Left to the write to run into: this is a better message, not a new refusal.
+    return null;
+  }
+  const lockOwner = props?.['jcr:lockOwner'] || null;
+  if (!lockOwner) return null;
+  /* Who is signed in, where the instance says. Where it does not, the lock
+     still stands - naming the owner beats writing into a page that will keep
+     its old content and answer 200. */
+  let me = null;
+  try {
+    me = await client.currentUser?.();
+  } catch {
+    me = null;
+  }
+  return me && lockOwner === me ? null : lockOwner;
+}
+
+/** The same lock, said at the write - the last check before anything is sent. */
+export async function assertNotLocked(client, page) {
+  const lockOwner = await lockOwnerOf(client, page);
+  if (!lockOwner) return;
+  throw abort(
+    `Destination page is locked. ${page} is locked by ${lockOwner}, so it cannot be edited. ` +
+      'Ask them to unlock it in AEM, then run this again. Nothing has been written.'
+  );
+}
+
+/** The same lock, said on the review - so nobody reaches the write to find out. */
+export const lockBlocker = (page, lockOwner) =>
+  `Destination page is locked. ${page} is locked by ${lockOwner}, so it cannot be edited. ` +
+  'Ask them to unlock it in AEM, then analyse again.';
+
+/**
  * Write a diff to the page at `page`.
  *
  *   toDest   source rel -> destination rel, for a page whose components were
@@ -306,6 +358,10 @@ export async function executeDiff(
   { page, toDest = (rel) => rel, recheck = null, report = () => {}, step = () => {}, removalsAcked = false }
 ) {
   const root = `${page}/jcr:content`;
+
+  /* Before anything is read back or written: a locked destination takes the
+     whole write, answers 200 and keeps its old content. */
+  await assertNotLocked(client, page);
 
   /* Said before the re-check, not after it. `recheck` reads every component
      this plan would remove, live, one at a time - on a big page that is a

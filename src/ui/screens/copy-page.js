@@ -30,7 +30,8 @@ import {
   stepBar,
   titled,
   toTop,
-  openInAem
+  openInAem,
+  whatHappens
 } from '../parts.js';
 import { uploadWait } from '../../core/aem-client.js';
 import { insideBackupFolder } from '../../core/paths.js';
@@ -82,6 +83,7 @@ export async function render(ctx) {
       keepImages: false,
       keepLinks: false,
       keepSites: [],
+      copyDam: [],
       ackRemovals: false,
       ackMetadata: false,
       result: null,
@@ -274,6 +276,17 @@ export async function render(ctx) {
       })
     );
     view.append(adv);
+
+    view.append(
+      ...whatHappens([
+        ['eye', 'Analyze only reads. You see everything that would change before anything is written.'],
+        ['copy', 'The source page is copied onto the destination. If the destination is not there yet, it is created.'],
+        ['history', 'If the destination already exists, it is updated to match the source: changed text and new components are written.'],
+        ['pen', 'Components the source does not have are removed from the destination, unless you untick the box above.'],
+        ['link', 'Internal links, canonical URLs and image references are re-pointed to the destination site.'],
+        ['deck', 'Only this page is copied — child pages are not.']
+      ])
+    );
 
     analyzeBtn = button('Analyze', 'primary', doAnalyze, { disabled: !isReady() });
     footer.append(
@@ -486,6 +499,37 @@ export async function render(ctx) {
       );
     }
 
+    /* Images in a DAM folder other than the source site's - an /ae_ar page
+       keeps its images under /content/dam/samsung/ae. Left pointing there
+       unless ticked: a folder outside the site may be shared on purpose. */
+    if (s.otherDam?.length) {
+      view.append(
+        titled(
+          'Images in other DAM folders',
+          s.otherDam.flatMap((f) => {
+            const on = own.copyDam.includes(f.folder);
+            const n = plural(f.images.length, 'image');
+            return [
+              check(
+                `Copy images from ${f.root} into ${f.to}`,
+                on,
+                (yes) => {
+                  own.copyDam = yes
+                    ? [...own.copyDam.filter((x) => x !== f.folder), f.folder]
+                    : own.copyDam.filter((x) => x !== f.folder);
+                  scheduleRecheck();
+                },
+                on
+                  ? `${n} uploaded to ${f.to} where not already there, and the page pointed at them.`
+                  : `Left as they are: ${n} still point at ${f.root}. Nothing is uploaded.`
+              ),
+              ...damRows(f, on && f.copied)
+            ];
+          })
+        )
+      );
+    }
+
     /* The destination's own backup under india/backup, taken or brought up to
        date before anything is written. Only offered when there is something
        to do: a destination already inside the backup folder has no backup
@@ -547,20 +591,21 @@ export async function render(ctx) {
       view.append(
         notice(
           'warn',
-          'That is a lot to remove',
-          `${plural(s.counts?.nodesDeleted || 0, 'component')} and ${plural(s.props?.deleted?.length || 0, 'property', 'properties')} would go. That can mean the wrong pages were picked.`,
+          'This will delete a lot from the destination page',
+          `The destination page has ${plural(s.counts?.nodesDeleted || 0, 'component')} and ${plural(s.props?.deleted?.length || 0, 'setting')} that are not on the source page, so copying would delete them. If you picked the wrong source or destination page, content could be lost. Check the list above before you go on.`,
           'warn'
         )
       );
       view.append(
         list([
           check(
-            'These are the right pages — remove them anyway',
+            'I have checked - delete these from the destination page',
             own.ackRemovals,
             (on) => {
               own.ackRemovals = on;
               redraw();
-            }
+            },
+            'Nothing is deleted until you confirm on the next step.'
           )
         ])
       );
@@ -606,7 +651,7 @@ export async function render(ctx) {
     const held = stale
       ? 'Working out the plan again…'
       : needsRemovalsAck
-        ? 'Tick the removals box to continue'
+        ? 'Tick the box above to continue'
         : null;
 
     footer.append(
@@ -690,6 +735,14 @@ export async function render(ctx) {
       writing
         ? notice('write', 'Copying the page', 'Keep this panel open until it finishes.', 'pen')
         : notice('read', 'Reading both pages…', 'Nothing is written.', 'eye')
+    );
+    /* Which pages this run is about, so nobody watches a copy go by without
+       knowing where it comes from and where it lands. */
+    view.append(
+      list([
+        kv(another ? `Source · ${host(own.sourceOrigin)}` : 'Source · this server', own.source, true),
+        kv(another ? `Destination · ${host(own.destOrigin)}` : 'Destination · this server', own.dest, true)
+      ])
     );
     if (!writing) {
       /* Reading: a card of what has been read and what is being worked on now. */
@@ -838,7 +891,8 @@ export async function render(ctx) {
       destSite: own.destSite || undefined,
       keepImages: own.keepImages,
       keepLinks: own.keepLinks,
-      keepSites: [...own.keepSites]
+      keepSites: [...own.keepSites],
+      copyDam: [...own.copyDam]
     };
     if (another) {
       p.sourceOrigin = own.sourceOrigin;
@@ -1245,6 +1299,37 @@ function linkRows(links, site, destSite, repoint) {
   });
   if (all.length > shown.length) {
     rows.push(el('div', 'link-sub-more', `and ${all.length - shown.length} more to /${site}`));
+  }
+  return rows;
+}
+
+/**
+ * The images in one other DAM folder, under its tick box - at most eight, the
+ * rest counted. Once the plan has been worked out with the box ticked, each
+ * says what the run will do with it: an image already in the destination's
+ * folder is not uploaded again, and the page points at the one there.
+ */
+function damRows(f, planned) {
+  const all = f.images || [];
+  const shown = all.slice(0, 8);
+  const what = {
+    upload: 'uploaded',
+    overwrite: 'uploaded over the one there',
+    'already there': 'already there - that one is used',
+    'copying disabled': 'not uploaded - turned off in Settings',
+    'missing at source': 'not in the DAM - to do by hand'
+  };
+  const rows = shown.map((img) => {
+    const row = el('div', 'link-sub');
+    const from = el('div', 'link-sub-from');
+    from.append(...pathParts(img.path));
+    row.append(from);
+    const note = planned ? what[img.action] || img.action || 'checked when you continue' : 'kept as it is';
+    row.append(el('span', 'link-sub-note', img.uses > 1 ? `${note} · used ${img.uses}×` : note));
+    return row;
+  });
+  if (all.length > shown.length) {
+    rows.push(el('div', 'link-sub-more', `and ${all.length - shown.length} more in ${f.root}`));
   }
   return rows;
 }

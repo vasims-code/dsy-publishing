@@ -17,6 +17,7 @@ import { FEATURE_IDS, loadAllMeta } from '../features/registry.js';
 import { icon } from './icons.js';
 import { DOES_LABEL, visibleTools } from './tools.js';
 import { armPin, dropPin, pinned, running, watchRuns } from './run.js';
+import { toTop } from './parts.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => {
@@ -405,6 +406,10 @@ function openTool(id) {
     armPin(() => state.origin);
   }
   state.toolId = id;
+  /* A tool is opened by pressing a row that may be far down the home screen,
+     and the panel keeps the scroll it had - so the tool arrived already
+     scrolled past its first step. Every tool, since the shell opens them all. */
+  toTop();
   render();
 }
 

@@ -118,13 +118,26 @@ const hostPathPrefixesOf = (sites) => ['', sites.contentRoot, '/' + segs(sites.c
  * /uk, say - at the destination. Only their written-out forms, a URL on a
  * listed host or a /content path: a bare /uk/... inside text is too easily
  * something else. Their images are left alone.
+ *
+ * `alsoDam` does for images what `alsoSites` does for links: DAM folders other
+ * than the source site's - /content/dam/samsung/ae on an /ae_ar page, where
+ * the page and its images are named differently - re-pointed at the
+ * destination's DAM folder. Only folders the review ticked; the run uploads
+ * the images to where these rules send their references.
  */
-export function buildRules(sites, { images = true, links = true, alsoSites = [] } = {}) {
+export function buildRules(sites, { images = true, links = true, alsoSites = [], alsoDam = [] } = {}) {
   if (!sites.enabled) return { rules: [], leftoverRe: null, sites };
 
   const hostPathPrefixes = hostPathPrefixesOf(sites);
 
   const rules = images ? [{ id: 'dam', re: new RegExp(esc(sites.srcDam) + TAIL, 'g'), to: sites.destDam }] : [];
+  if (images) {
+    for (const folder of alsoDam) {
+      const root = `${sites.damRoot}/${folder}`;
+      if (root === sites.srcDam || root === sites.destDam) continue;
+      rules.push({ id: `dam:${folder}`, re: new RegExp(esc(root) + TAIL, 'g'), to: sites.destDam });
+    }
+  }
 
   for (const p of links ? prefixes(sites, hostPathPrefixes) : []) {
     rules.push({

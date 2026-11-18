@@ -37,7 +37,8 @@ import {
   startingStep,
   stepBar,
   toTop,
-  openInAem
+  openInAem,
+  whatHappens
 } from '../parts.js';
 import { logBox, makeLog } from '../log.js';
 import { runAction } from '../run.js';
@@ -268,6 +269,14 @@ export function render(ctx, own) {
         )
       );
     }
+
+    view.append(
+      ...whatHappens([
+        ['search', 'Every row is checked against the page as it is now. You read what would change first.'],
+        ['pen', 'Writing sends the translated texts to the page, then reads it back to check every one.'],
+        ['eye', 'Nothing is written until you confirm, and nothing is ever published.']
+      ])
+    );
 
     const go = button('Check the translation', 'primary', () => doCheck(), { disabled: !ready() });
     footer.append(

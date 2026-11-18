@@ -105,18 +105,33 @@ tools/                 build-zip.py, check.py. Not shipped.
 | `screens/*.js` | one file per tool |
 | `options.html` / `options.js` | the settings page |
 
-### Five tools over seven features
+### Six tools over ten features
 
-`tools.js` is where that mapping lives. Two tools ask one more question before
-they start, so the home screen stays five rows long:
+`tools.js` is where that mapping lives. Three tools ask one more question
+before they start, so the home screen stays six rows long:
 
 | Tool | Features | The extra question |
 |---|---|---|
 | Copy a page | `page-upsert`, `page-transfer` | This server, or another one |
 | Backup | `page-copy` | |
 | Copy deck | `copy-deck`, `copy-deck-import` | Export, or import |
-| Relative Link Fixer | `link-fixer` | |
+| Links | `broken-links`, `link-fixer`, `site-code-fixer` | Which of the three |
+| Arabic flipping fixer | `arabic-fixer` | |
 | Versions | `page-versions` | |
+
+Copy a page asks its question as a segmented control, because both answers
+fill in the same form. Copy deck and Links ask with a card each, because the
+answers are different flows with their own steps, footers and workers -
+`screens/links.js` chooses and hands over, and the screen behind each card is
+the tool's own, unchanged. Links is marked *Reads + writes* on the home
+screen: the broken link finder only reads, and its card says so.
+
+The Site Code Link Fixer lists links in a page's content that point into
+another site - `/ae_ar/...` on an `/sa` page - and re-points the ticked ones at
+the page's own site, changing only the site code. A code counts as a site only
+when AEM has a page at `/content/<brand>/<code>`, and each corrected link's page
+is looked up first: one this site does not have is flagged and left unticked.
+Page properties (canonical, hreflang) are not scanned.
 
 ### How a screen talks to AEM
 
@@ -178,6 +193,28 @@ Learned by getting them wrong first.
 ---
 
 ## Deliberate engine change
+
+`src/features/broken-links/worker.js`: images and files under `/content/dam/`
+are never looked up. The finder is for links, and the old "check images too"
+setting (`linkCheckAssets`) is gone with it, so an image is listed under its
+component and marked *not checked*, the way a link to another site is. A scan
+of a long page is that many fewer reads.
+
+A lookup the server redirected is reported as where it went, not as *No
+answer*. AEM answers the `.1.json` of a page whose redirect is set by sending
+the request to the target, dropping the `.json` on the way, so what comes back
+is the target's HTML - and `JSON.parse` failing on it used to read as
+"answered with something other than JSON". Every retired page on a site
+therefore sat under *Need a look*. `fetch` follows the whole chain, so the
+status is already the end of it: a dead end comes back as the 404 it is, and
+anything else landed on a page that renders. `verdict` turns it into the
+`ok` + *Redirects* the screen already draws for a page with `redirectTarget`.
+
+Both are guarded by `tools/broken-links-test.mjs`, which runs the real `scan`
+against a fake AEM. It exists because removing the setting left one use of its
+variable behind, and every scan threw `checkAssets is not defined` while all 80
+browser tests passed - the browser suite stubs the worker, so it could not have
+seen it.
 
 `src/features/page-versions/worker.js`, in the read-only `list` action:
 

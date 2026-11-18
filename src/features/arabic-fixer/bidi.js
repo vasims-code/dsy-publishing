@@ -51,6 +51,10 @@ const SUP = '[¹²³⁴⁵⁶⁷⁸⁹⁰*]*';
 const SP = '[ \\u00A0]';
 const NUM = '\\d+(?:[.,]\\d+)*';
 const START = '(?<![A-Za-z0-9.])';
+/* The inch mark after a screen size, as the authors type it: a straight
+   quote, a curly one, or a prime. Two of the single ones stand in for a
+   double - 6.8’’ is written that way as often as 6.8”. */
+const INCH = '["\'\\u2018\\u2019\\u201C\\u201D\\u2032\\u2033]';
 
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 /* Longest first, so "GHz" is tried before "g". Nothing listed matches nothing. */
@@ -87,6 +91,14 @@ const buildRules = (units, names) => {
 
     // Percentages (keeps any space the author typed)
     new RegExp(`${START}[+-]?${NUM}${SP}?%${SUP}`, 'g'),
+
+    /* Screen sizes in inches:  6.8" | 6.6” | 6.8’’ | 7.6″
+       The mark is neutral, so Arabic lays it out to the left of the number
+       and 6.8" reads as "6.8 - which is what a lineup compare's size row
+       shows. No other rule here matches a bare number, so nothing caught it.
+       A number already inside quotes - "5" - is a quotation and not a
+       measurement, so a mark before the number rules the match out. */
+    new RegExp(`${START}(?<!${INCH})${NUM}${INCH}{1,2}`, 'g'),
 
     // Multipliers: 2x | 100x
     new RegExp(`${START}\\d+(?:\\.\\d+)?[x×](?![A-Za-z0-9])${SUP}`, 'g'),

@@ -40,7 +40,9 @@ import {
   titled,
   toTop,
   cardOf,
-  skeleton
+  choice,
+  skeleton,
+  whatHappens
 } from '../parts.js';
 import { logBox, makeLog } from '../log.js';
 import { runAction } from '../run.js';
@@ -206,6 +208,14 @@ export async function render(ctx) {
     field.append(input, el('div', 'field-hint', 'Filled in from the page open in this tab.'));
     view.append(field);
     view.append(notice('read', 'Read-only', 'Nothing is written to AEM.'));
+    view.append(
+      ...whatHappens([
+        ['deck', 'Reads the text written on the page, not the rendered page, so popups and carousel buttons are left out.'],
+        ['globe', 'A product page (PD) is the exception: its text comes from PIM, so it is read as the page shows it.'],
+        ['export', 'You pick which groups of text go on the sheet, then save it as an .xlsx for translators.'],
+        ['eye', 'Nothing on the page changes.']
+      ])
+    );
 
     const go = button('Review', 'primary', doRead, { disabled: !own.page.startsWith('/content/') });
     footer.append(...footerBar({ buttons: [go] }));
@@ -578,26 +588,6 @@ export async function render(ctx) {
 }
 
 /* -------------------------------------------------------------- pieces */
-
-/** One half of the tool, as a card of its own: what it is, and what it does to AEM. */
-function choice(iconName, title, sub, tag, onClick) {
-  const card = el('button', 'choice');
-  card.type = 'button';
-  const head = el('div', 'choice-head');
-  const ic = el('div', 'choice-icon');
-  ic.append(icon(iconName, 22, 1.9));
-  const chev = el('span', 'choice-chev');
-  chev.append(icon('next', 18, 2));
-  head.append(ic, el('div', 'choice-title', title), chev);
-  const chip = el('span', 'choice-chip');
-  chip.dataset.tone = tag.tone;
-  chip.append(icon(tag.icon, 13, 2.4), el('span', null, tag.text));
-  const chipRow = el('div');
-  chipRow.append(chip);
-  card.append(head, el('div', 'choice-sub', sub), chipRow);
-  card.addEventListener('click', onClick);
-  return card;
-}
 
 /** A small line over a card: what it is on the left, what can be done to all of it on the right. */
 function barRow(text, actions) {

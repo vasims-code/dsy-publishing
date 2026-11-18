@@ -55,6 +55,25 @@ const encPath = (p) =>
     .join('');
 
 /**
+ * Where a followed redirect ended up, as a path on this instance - or null if
+ * the answer came straight back. `fetch` follows the whole chain, so this is
+ * the end of it, not the first hop.
+ */
+function redirectedTo(res) {
+  if (!res.redirected || !res.url) return null;
+  let u;
+  try {
+    u = new URL(res.url, location.origin);
+  } catch {
+    return null;
+  }
+  // Off this instance altogether - the live site, say: name it in full.
+  if (u.origin !== location.origin) return `${u.origin}${u.pathname}`;
+  // .../galaxy-s22.html, or the .1.json that was asked for, back to the path.
+  return u.pathname.replace(/\/([^/.]+)\.[^/]*$/, '/$1');
+}
+
+/**
  * Is there a node at this path, and what is it? The question a link check
  * asks, once per link, so nothing here stops the run: a server hiccup on
  * one link is that link's answer, not the end of the scan.
@@ -64,6 +83,8 @@ const encPath = (p) =>
  *                                       jcr:content comes with it
  *   no         404 - nothing is there
  *   forbidden  403 - something is there that this account may not read
+ *   redirected { state: 'redirected', to }  the server sent the request
+ *                                       somewhere else and answered there
  *   error      no answer, a timeout, a 5xx, or an answer that is not JSON
  *
  * A 200 is only "yes" when it is the node's JSON. A signed-out session
@@ -89,9 +110,17 @@ async function lookup(path, { timeout = 20000 } = {}) {
 
   const text = await res.text().catch(() => '');
   try {
-    return { state: 'yes', json: JSON.parse(text) };
+    return { state: 'yes', json: JSON.parse(text), to: redirectedTo(res) };
   } catch {
     if (isSignInAnswer(res, text)) throw signedOut();
+    /* Sent somewhere else, and answered there. A page whose redirect is set
+       answers the .json request with the target's HTML - the .json is lost
+       on the way - so the body is not JSON and never was going to be. The
+       link resolves: reading that as "no answer" called every redirected
+       page a problem. The status above is the end of the chain, so a 404 at
+       the far end is already a 404 here. */
+    const to = redirectedTo(res);
+    if (to) return { state: 'redirected', to };
     return { state: 'error', note: 'answered with something other than JSON' };
   }
 }
@@ -258,7 +287,6 @@ export const actions = {
   /** Reads only. Every link in the page's content, and whether each one is on author. */
   async scan({ client, report, params, settings }) {
     const step = (id, state, note) => report('data', 'step', { id, state, note });
-    const checkAssets = settings?.linkCheckAssets !== false;
 
     /* ---- 1. the page ---------------------------------------------------- */
     step('read', 'running');
@@ -290,9 +318,9 @@ export const actions = {
     const linkCount = components.reduce((n, c) => n + c.links.length, 0);
 
     for (const t of targets) {
-      if (t.kind === 'page' || (t.kind === 'asset' && checkAssets)) continue;
+      if (t.kind === 'page') continue;
       t.state = t.kind === 'placeholder' ? 'placeholder' : 'unchecked';
-      if (t.kind === 'asset') t.note = 'images are not checked - turn that on in Settings';
+      if (t.kind === 'asset') t.note = 'images and files are not checked, on purpose';
       else if (t.kind === 'external') t.note = 'another site - not checked, on purpose';
     }
     const toCheck = targets.filter((t) => !t.state);
@@ -303,7 +331,7 @@ export const actions = {
     );
     report(
       'info',
-      `${plural(linkCount, 'link')} found on ${page}: ${plural(toCheck.length, 'distinct page or image', 'distinct pages and images')} to look up on ${location.host}` +
+      `${plural(linkCount, 'link')} found on ${page}: ${plural(toCheck.length, 'distinct page')} to look up on ${location.host}` +
         (ctx.site ? `, site-relative links read under ${ctx.contentRoot}` : '') +
         '.'
     );
@@ -339,7 +367,6 @@ export const actions = {
       contentRoot: ctx.contentRoot,
       site: ctx.site,
       hosts: ctx.hosts,
-      checkAssets,
       pd,
       nodes,
       components: components.length,

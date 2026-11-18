@@ -114,12 +114,15 @@ export const actions = {
     client.resetCaches();
     const hosts = hostsFrom(settings);
     const { page, title, content } = await readPage(client, params.page);
-    const { components, nodes } = scanContent(content, hosts);
-    const titles = await componentTitles(client, new Set(components.map((c) => c.resourceType)));
-    for (const c of components) c.title = titles.get(c.resourceType) || null;
+    const { components, strays, nodes } = scanContent(content, hosts);
+    const titles = await componentTitles(
+      client,
+      new Set([...components, ...strays].map((c) => c.resourceType))
+    );
+    for (const c of [...components, ...strays]) c.title = titles.get(c.resourceType) || null;
     const count = components.reduce((n, c) => n + c.links.length, 0);
 
-    const r = { page, title, hosts, components, nodes, count };
+    const r = { page, title, hosts, components, strays, nodes, count };
     report('data', 'analysis', r);
     report(
       'info',
@@ -127,6 +130,13 @@ export const actions = {
         ? `${plural(count, 'full-URL link')} found in ${plural(components.length, 'component')} (${nodes} nodes read). Nothing has been written.`
         : `No full-URL links to ${hosts.join(', ')} in ${nodes} nodes. Nothing to fix.`
     );
+    if (strays.length) {
+      report(
+        'warn',
+        `${plural(strays.length, 'link')} to a staging or QA host (${[...new Set(strays.map((s) => s.host))].join(', ')}). ` +
+          'These are not changed - replace them with the live page.'
+      );
+    }
     return r;
   },
 

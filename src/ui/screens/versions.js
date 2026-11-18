@@ -26,7 +26,8 @@ import {
   startingStep,
   stepBar,
   toTop,
-  openInAem
+  openInAem,
+  whatHappens
 } from '../parts.js';
 import { logBox, makeLog } from '../log.js';
 import { runAction } from '../run.js';
@@ -190,12 +191,12 @@ export async function render(ctx) {
     view.append(field);
 
     view.append(
-      notice(
-        'read',
-        'What this does',
-        'Lists every version saved for the page, read straight from the repository - so versions the Timeline does not show are listed too. Restoring and creating work on backup pages only.',
-        'history'
-      )
+      ...whatHappens([
+        ['history', 'Lists every version saved for the page, including ones the Timeline does not show.'],
+        ['back', 'Restore: the page goes back to the version you pick. Child pages are never changed.'],
+        ['copy', 'Create: saves the current content as a new version, with your message.'],
+        ['folder', 'Restore and Create only work on backup pages (under /india/backup/). Any page can be listed.']
+      ])
     );
 
     const go = button('Show versions', 'primary', doList, {

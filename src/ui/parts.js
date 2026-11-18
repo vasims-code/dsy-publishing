@@ -92,6 +92,45 @@ export function list(rows) {
   return box;
 }
 
+/**
+ * One way into a tool that has several, as a card of its own: what it is, and
+ * what it does to AEM. The home screen stays one row a tool, and the question
+ * of which way is asked here instead.
+ */
+export function choice(iconName, title, sub, tag, onClick) {
+  const card = el('button', 'choice');
+  card.type = 'button';
+  const head = el('div', 'choice-head');
+  const ic = el('div', 'choice-icon');
+  ic.append(icon(iconName, 22, 1.9));
+  const chev = el('span', 'choice-chev');
+  chev.append(icon('next', 18, 2));
+  head.append(ic, el('div', 'choice-title', title), chev);
+  const chip = el('span', 'choice-chip');
+  chip.dataset.tone = tag.tone;
+  chip.append(icon(tag.icon, 13, 2.4), el('span', null, tag.text));
+  const chipRow = el('div');
+  chipRow.append(chip);
+  card.append(head, el('div', 'choice-sub', sub), chipRow);
+  card.addEventListener('click', onClick);
+  return card;
+}
+
+/**
+ * "What happens": a heading over one card, a row for each thing the tool will
+ * and will not do, so an author knows before pressing anything. `rows` are
+ * [icon name, plain sentence]. Returns the two nodes - spread them into
+ * `view.append(...)`.
+ */
+export function whatHappens(rows, title = 'What happens') {
+  const items = rows.map(([iconName, text]) => {
+    const row = el('div', 'what-row');
+    row.append(icon(iconName, 18, 1.9), el('div', null, text));
+    return row;
+  });
+  return [label(title), list(items)];
+}
+
 /** A card with its own heading, as the design draws a section of a review. */
 export function titled(text, rows) {
   const box = list(rows);

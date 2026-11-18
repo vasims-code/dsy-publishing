@@ -30,7 +30,8 @@ import {
   runStep,
   startingStep,
   stepBar,
-  toTop
+  toTop,
+  whatHappens
 } from '../parts.js';
 import { logBox, makeLog } from '../log.js';
 import { runAction } from '../run.js';
@@ -184,6 +185,16 @@ export async function render(ctx) {
       el('div', 'field-hint', 'Filled in from the page open in AEM. Its copy is read the way Copy deck reads it.')
     );
     view.append(field);
+
+    view.append(
+      ...whatHappens([
+        ['deck', 'Reads the page’s copy the same way Copy deck does.'],
+        ['bidi', 'Finds English and numbers that show in the wrong order inside Arabic text. Before: 12 MP F2.2 shows as MP F2.2 12.'],
+        ['check', 'For the fields you tick, it adds an invisible mark so the text shows correctly. After: it shows as 12 MP F2.2 again. The words do not change, and the page is read back to check.'],
+        ['globe', 'Only Arabic pages are changed. The words stay as they are; a decimal comma becomes a dot (1,5 becomes 1.5).'],
+        ['eye', 'Nothing is written until you review and confirm.']
+      ])
+    );
 
     const scanBtn = button('Scan this page', 'primary', doScan, {
       disabled: !own.page.startsWith('/content/')

@@ -525,13 +525,25 @@ a { color: inherit; text-decoration: none; }
   padding: 1px 7px;
   flex: none;
 }
+/* The whole link, wrapped: an author has to see where it goes wrong, and a
+   cut-off "..." hid exactly that. */
 .link-url {
   margin-top: 3px;
   font-size: 14px;
   font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+/* The host a link should not have, marked where it stands. */
+.link-host {
+  background: var(--wb);
+  color: var(--wt);
+  border-radius: 4px;
+  padding: 0 3px;
+}
+.link-where.link-where--wrap > span:first-child {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 /* The part that goes away, struck through where it stands. */
 .link-cut {
@@ -541,6 +553,14 @@ a { color: inherit; text-decoration: none; }
   padding: 0 3px;
   font-weight: 500;
   text-decoration: line-through;
+}
+/* The site code a link gets instead, beside the one struck out. */
+.link-new {
+  background: var(--ob);
+  color: var(--ot);
+  border-radius: 4px;
+  padding: 0 3px;
+  margin-left: 2px;
 }
 
 /* ========================================================= arabic fixer */
