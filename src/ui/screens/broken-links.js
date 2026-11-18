@@ -54,7 +54,7 @@ const fieldsParam = async () => JSON.stringify(await loadFields().catch(() => ({
 function tagOf(t) {
   switch (t.state) {
     case 'missing':
-      return ['404', 'err'];
+      return [t.kind === 'anchor' ? 'No such id' : t.kind === 'badhost' ? 'No .com' : '404', 'err'];
     case 'case':
       return ['Case', 'warn'];
     case 'notpage':
@@ -65,6 +65,8 @@ function tagOf(t) {
       return ['No answer', 'warn'];
     case 'placeholder':
       return ['Placeholder', 'warn'];
+    case 'query':
+      return ['Check by hand', 'warn'];
     case 'ok':
       return [t.redirect ? 'Redirects' : 'OK', t.redirect ? 'info' : 'ok'];
     default:
@@ -74,7 +76,7 @@ function tagOf(t) {
 
 /** The three piles, and what is set aside. */
 const isBroken = (t) => t.state === 'missing';
-const needsLook = (t) => ['case', 'notpage', 'forbidden', 'error', 'placeholder'].includes(t.state);
+const needsLook = (t) => ['case', 'notpage', 'forbidden', 'error', 'placeholder', 'query'].includes(t.state);
 const isOk = (t) => t.state === 'ok';
 const isUnchecked = (t) => !isBroken(t) && !needsLook(t) && !isOk(t);
 
@@ -132,10 +134,10 @@ export function reportText(scan) {
     lines.push('');
   };
   const sorted = sortTargets(scan.targets || []);
-  section('BROKEN - not on author', sorted.filter(isBroken));
+  section('BROKEN - not on author, or no such id on the page', sorted.filter(isBroken));
   section('NEED A LOOK', sorted.filter(needsLook));
   section('NOT CHECKED', sorted.filter(isUnchecked));
-  section('OK - exist on author', sorted.filter(isOk));
+  section('OK - exist on author, or on the page', sorted.filter(isOk));
   return lines.join('\n').trimEnd() + '\n';
 }
 
@@ -482,7 +484,8 @@ export async function render(ctx) {
     if (t.redirect) wrap.append(el('div', 'bl-note', `The page redirects to ${t.redirect}`));
     if (t.note && t.state !== 'ok') wrap.append(el('div', 'bl-note', capital(t.note)));
 
-    if (t.kind === 'page' && t.state === 'ok') {
+    /* A page with a query on it is there too - opening it is how it gets checked. */
+    if (t.kind === 'page' && (t.state === 'ok' || t.state === 'query')) {
       const open = el('button', 'bl-open', 'Open on author');
       open.type = 'button';
       open.addEventListener('click', () => openInAem(own.scanned?.origin || state.origin, `/editor.html${t.path}.html`));

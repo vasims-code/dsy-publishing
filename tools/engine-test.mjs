@@ -803,6 +803,8 @@ await import('./engine-test-backup-versions.mjs');
 /* The Relative Link Fixer, the content script's origin check, team defaults
    and the manifest - their own file, for the same reason. */
 await import('./link-fixer-test.mjs');
+await import('./broken-links-test.mjs');
+await import('./site-code-fixer-test.mjs');
 
 /* Copy a page's refusals, read-back and page-properties box, on a small
    in-memory AEM of its own - the shapes that once got past them. */

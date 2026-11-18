@@ -78,8 +78,13 @@ const stripHtml = (p) => p.replace(/\.html?$/i, '');
  *   /sa_en/…                    site-relative: checked under the content root
  *   /etc/…, /libs/…             the repository's own folders - not a link
  */
-function fromPath(p, raw, ctx) {
+function fromPath(p, raw, ctx, search = null) {
   let path = String(p).split(/[?#]/)[0];
+  /* "?mini-led" after a page is a filter or a parameter the page reads in
+     the browser. Author cannot say whether the page understands it, so the
+     page is looked up without it and the query is kept, to be called out. */
+  const q = /\?([^#]*)/.exec(String(p))?.[1];
+  const query = search ?? (q ? `?${q}` : null);
   try {
     path = decodeURI(path);
   } catch {
@@ -98,13 +103,13 @@ function fromPath(p, raw, ctx) {
 
   if (s[0] === 'content') {
     if (s[1] === 'dam') return { kind: 'asset', raw, path: '/' + s.join('/') };
-    return { kind: 'page', raw, path: stripHtml('/' + s.join('/')), site: s[2] || null };
+    return { kind: 'page', raw, path: stripHtml('/' + s.join('/')), site: s[2] || null, query };
   }
   if (s.length && (SYSTEM.has(s[0]) || /^etc\./i.test(s[0]))) return { kind: 'system', raw, path };
 
   // Site-relative: /sa_en/offers/ lives at /content/samsung/sa_en/offers.
   const rel = s.length ? '/' + s.join('/') : '';
-  return { kind: 'page', raw, path: stripHtml(`${ctx.contentRoot}${rel}`), site: s[0] || null };
+  return { kind: 'page', raw, path: stripHtml(`${ctx.contentRoot}${rel}`), site: s[0] || null, query };
 }
 
 /**
@@ -112,20 +117,32 @@ function fromPath(p, raw, ctx) {
  *
  *   { kind: 'page' | 'asset', path }          something to look up on author
  *   { kind: 'external', href, host }          another host - listed, not checked
- *   { kind: 'anchor' | 'placeholder' | 'special', raw, note }
+ *   { kind: 'badhost', href, host, fixed }    www.samsung without ".com" - broken
+ *   { kind: 'anchor', raw, id }               a place on this page - checked
+ *                                             against the ids the rendered page has
+ *   { kind: 'placeholder' | 'special', raw, note }
  *   { kind: 'system' }                        the repository's own folders - dropped
  *   null                                      not a link at all
+ *
+ * `link` says the value was stored where only a link goes - an href, a
+ * linkPath - so "#123" there is an anchor, where in a colour field it is a colour.
  */
-export function classify(raw, ctx) {
+export function classify(raw, ctx, { link = false } = {}) {
   const s = String(raw ?? '').trim();
   if (!s) return null;
   if (/^data:/i.test(s)) return null;
 
   if (s.startsWith('#')) {
     // "#FFFFFF" in a colour field is a colour; "#" on its own is a CTA that goes nowhere yet.
-    if (/^#[0-9a-f]{3,8}$/i.test(s)) return null;
+    if (!link && /^#[0-9a-f]{3,8}$/i.test(s)) return null;
     if (/^#\/?$/.test(s)) return { kind: 'placeholder', raw: s, note: 'goes nowhere yet' };
-    return { kind: 'anchor', raw: s, note: 'a place on the same page' };
+    let id = s.slice(1);
+    try {
+      id = decodeURIComponent(id);
+    } catch {
+      // A stray "%" - the id as written.
+    }
+    return { kind: 'anchor', raw: s, id, note: 'a place on the same page' };
   }
   if (/^(?:javascript|mailto|tel|sms|whatsapp|intent|market|itms[a-z-]*|fb|twitter):/i.test(s)) {
     return { kind: 'special', raw: s, note: `a ${s.split(':')[0].toLowerCase()}: link` };
@@ -145,8 +162,16 @@ export function classify(raw, ctx) {
     }
     if (!/^https?:$/.test(u.protocol)) return { kind: 'special', raw: s, note: `a ${u.protocol} link` };
     const host = u.hostname.toLowerCase();
+    /* www.samsung/iq_ar/... - samsung.com with its ".com" lost. No visitor
+       reaches the site there, and a copy leaves the link pointing at the old
+       site because it is not one of our hosts, so it is called broken here
+       rather than passed over as another site. */
+    if (!ctx.hosts.includes(host) && /^(?:www\.)?samsung$/.test(host)) {
+      const fixed = `${u.protocol}//${host === 'samsung' ? '' : 'www.'}samsung.com${u.pathname}${u.search}${u.hash}`;
+      return { kind: 'badhost', raw: s, href: u.href, host, fixed, note: `"${host}" is missing ".com" - it should be ${fixed}` };
+    }
     if (!ctx.hosts.includes(host)) return { kind: 'external', raw: s, href: u.href, host };
-    return fromPath(u.pathname, s, ctx);
+    return fromPath(u.pathname, s, ctx, u.search && u.search !== '?' ? u.search : null);
   }
 
   if (s.startsWith('/')) return fromPath(s, s, ctx);
@@ -154,6 +179,9 @@ export function classify(raw, ctx) {
 }
 
 /* --------------------------------------------------- links inside strings */
+
+/* A property named for a link: linkPath, ctaUrl, href, clickableStateLinkPath, anchorTarget. */
+const LINK_PROP = /link|url|href|path|target|anchor/i;
 
 /* AEM's own properties: the node's type, its dates, who touched it. Never an authored link. */
 const SKIP_PROPS = /^(?:jcr|cq|sling|rep|oak|granite|mix|nt):/;
@@ -288,7 +316,10 @@ export function scanContent(content, ctx) {
       values.forEach((s, i) => {
         if (typeof s !== 'string') return;
         for (const f of findInString(s)) {
-          const target = classify(f.raw, ctx);
+          /* Markup, JSON and url() only hold a link where this was found; a whole
+             value does when its property is named for one. */
+          const link = f.context !== 'value' || LINK_PROP.test(prop);
+          const target = classify(f.raw, ctx, { link });
           if (!target || target.kind === 'system') continue;
           links.push({
             prop,
@@ -347,7 +378,8 @@ export function targetsOf(components) {
   for (const c of components) {
     for (const l of c.links) {
       const t = l.target;
-      const key = t.kind === 'page' || t.kind === 'asset' ? `${t.kind}|${t.path}` : `${t.kind}|${t.href || t.raw}`;
+      /* Two queries on one page are two targets: each is its own thing to check by hand. */
+      const key = t.kind === 'page' || t.kind === 'asset' ? `${t.kind}|${t.path}${t.query || ''}` : `${t.kind}|${t.href || t.raw}`;
       if (!map.has(key)) {
         map.set(key, {
           key,
@@ -357,6 +389,8 @@ export function targetsOf(components) {
           host: t.host || null,
           raw: t.raw,
           site: t.site || null,
+          query: t.query || null,
+          id: t.id ?? null,
           note: t.note || null,
           uses: []
         });
@@ -390,8 +424,21 @@ export function targetsOf(components) {
  *                with no content - which renders as 404 on the live site
  *   forbidden    403: this account cannot see it, so nobody can say
  *   error        the server did not answer properly
+ *   query        the page is there, but the link carries "?…" after it -
+ *                a filter such as ?mini-led - which nothing on author can
+ *                confirm, so a person checks it by hand
  */
 export function verdict(target, answer, lower = null) {
+  const v = pageVerdict(target, answer, lower);
+  if (v.state !== 'ok' || target.kind !== 'page' || !target.query) return v;
+  return {
+    ...v,
+    state: 'query',
+    note: `the page is on author, but "${target.query}" after it could not be checked - open the link and check it by hand`
+  };
+}
+
+function pageVerdict(target, answer, lower) {
   if (answer.state === 'no') {
     if (lower?.state === 'yes') return { state: 'case', note: `exists only as ${target.path.toLowerCase()}` };
     return { state: 'missing', note: 'nothing is at this path on author' };
@@ -423,4 +470,53 @@ export function verdict(target, answer, lower = null) {
   if (type === 'dam:Asset') return { state: 'ok' };
   if (/folder/i.test(String(type))) return { state: 'notpage', note: 'a folder, not a file' };
   return { state: 'ok', note: type ? `a ${type}` : null };
+}
+
+/* ------------------------------------------------------------ the anchors */
+
+const decodeEntities = (v) =>
+  v
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+
+/**
+ * Every place a "#…" link can land on a rendered page: each element's id, and
+ * the name of an <a name="…">, which browsers still jump to. Read off the HTML
+ * text rather than through DOMParser, so the same function runs in a test in
+ * Node. `data-id="x"` is not an id: the attribute must start after a space.
+ */
+export function idsIn(html) {
+  const ids = new Set();
+  const s = String(html || '');
+  for (const m of s.matchAll(/<[a-z][\w:-]*\s[^>]*>/gi)) {
+    const tag = m[0];
+    for (const a of tag.matchAll(/\s(id|name)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/gi)) {
+      if (a[1].toLowerCase() === 'name' && !/^<a\s/i.test(tag)) continue;
+      const v = decodeEntities(a[2] ?? a[3] ?? a[4] ?? '').trim();
+      if (v) ids.add(v);
+    }
+  }
+  return ids;
+}
+
+/**
+ * What the rendered page says about an anchor. `ids` is idsIn(the page's
+ * HTML), or null when the page could not be rendered.
+ *
+ *   ok        an element on the page has this id
+ *   missing   nothing on the page has it: the link goes nowhere. Broken.
+ *   error     the page did not render, so nobody can say
+ */
+export function anchorVerdict(target, ids) {
+  if (!ids) return { state: 'error', note: 'the page could not be rendered, so its ids could not be read' };
+  if (ids.has(target.id)) return { state: 'ok' };
+  return {
+    state: 'missing',
+    note: `nothing on the page has id="${target.id}" - the link goes nowhere. If a script adds it in the browser, check it on the live page`
+  };
 }

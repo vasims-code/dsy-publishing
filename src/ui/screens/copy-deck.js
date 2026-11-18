@@ -92,6 +92,17 @@ export async function render(ctx) {
     redraw();
   };
 
+  /* The panel's Back goes from Export or Import to the two cards, and only
+     from the cards to the home screen. Everything either half read or was
+     given is dropped, as leaving the tool would drop it: a deck read for a
+     page since left is worse than reading it again. */
+  own.onBack = () => {
+    if (!own.side) return false;
+    for (const k of Object.keys(own)) delete own[k];
+    redraw();
+    return true;
+  };
+
   view.append(
     connPill({
       host: String(state.origin || '').replace(/^https?:\/\//, ''),

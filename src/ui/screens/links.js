@@ -74,6 +74,13 @@ export async function render(ctx) {
     own.way = null;
     ctx.render();
   };
+  /* The panel's Back goes from a tool to these cards, and only from the
+     cards to the home screen - the same as "All link tools". */
+  own.onBack = () => {
+    if (!own.way) return false;
+    goChoice();
+    return true;
+  };
 
   const way = wayOf(own.way);
   if (!way) {

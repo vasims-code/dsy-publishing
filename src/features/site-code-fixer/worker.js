@@ -95,7 +95,8 @@ async function realSites(client, contentRoot, codes) {
 /** Candidates found by the scanner, kept to the codes that are sites. */
 async function siteLinks(client, content, ctx) {
   const { components, nodes } = scanContent(content, ctx);
-  const codes = new Set(components.flatMap((c) => c.links.map((l) => l.code)));
+  // A placeholder is not a site to ask AEM about; keepSites lets it through for review.
+  const codes = new Set(components.flatMap((c) => c.links.filter((l) => !l.placeholder).map((l) => l.code)));
   const sites = codes.size ? await realSites(client, ctx.contentRoot, codes) : new Set();
   return { components: keepSites(components, sites), nodes, sites, notSites: [...codes].filter((c) => !sites.has(c)).sort() };
 }

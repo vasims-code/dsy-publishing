@@ -27,6 +27,12 @@ const NOT_A_SITE = new Set(['content', 'dam', 'etc', 'libs', 'apps', 'conf', 'bi
 /** A site code: letters and digits with underscores between - uk, ae_ar, africa_en. */
 const SITE_CODE = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/i;
 
+/* A placeholder where the site code goes: {site_code}, {site-code}. The SEO
+   schema markup is authored this way for every locale at once. Whether the
+   component fills it in when the page is published is not known here, so it
+   is listed for an author to decide on, never ticked for them. */
+const PLACEHOLDER = /^\{[a-z][\w-]*\}$/i;
+
 /* Attributes and JSON keys that hold words for a reader, not a link. */
 const TEXT_NAMES = /^(?:alt|title|label|placeholder|aria-[\w-]+|data-title|data-alt|data-label)$/i;
 
@@ -73,7 +79,9 @@ function urlsIn(s) {
     if (!/^(?:https?:\/\/|\/\/|\/)/i.test(m[4])) continue;
     out.push({ start: m.index + m[0].length - m[2].length - 1 - m[4].length, url: m[4], context: 'attribute', attr: m[1] });
   }
-  if (/^\s*[[{]/.test(s)) {
+  /* JSON, or a fragment of it: the schema markup component keeps its body
+     without the outer braces - "@type": "Guide", "url": "…" - and adds them itself. */
+  if (/^\s*[[{]/.test(s) || /^\s*"[^"\\]*"\s*:/.test(s)) {
     for (const m of s.matchAll(/"([^"\\]*)"\s*:\s*"((?:https?:\/\/|\/)[^"\\\s]*)"/g)) {
       if (TEXT_NAMES.test(m[1])) continue;
       out.push({ start: m.index + m[0].length - 1 - m[2].length, url: m[2], context: 'json' });
@@ -109,7 +117,8 @@ export function readLink(url, { site, contentRoot, hosts }) {
   const seg = after.match(/^\/([^/.]+)(\.html?)?(?=\/|$)/i);
   if (!seg) return null;
   const code = seg[1];
-  if (!SITE_CODE.test(code) || NOT_A_SITE.has(code.toLowerCase()) || code.toLowerCase() === site) return null;
+  const placeholder = PLACEHOLDER.test(code);
+  if (!placeholder && (!SITE_CODE.test(code) || NOT_A_SITE.has(code.toLowerCase()) || code.toLowerCase() === site)) return null;
   // /editor.html/... and other consoles are never a page link.
   if (!prefix && seg[2]) return null;
 
@@ -121,7 +130,9 @@ export function readLink(url, { site, contentRoot, hosts }) {
     .slice(1 + code.length)
     .replace(/\.html?$/i, '')
     .replace(/\/+$/, '');
-  return { code: code.toLowerCase(), at, to, target: `${contentRoot}/${site}${rest}` };
+  /* A placeholder keeps its spelling: it is shown struck out as written, and
+     {site-code} beside {site_code} on one page is worth seeing. */
+  return { code: placeholder ? code : code.toLowerCase(), at, to, target: `${contentRoot}/${site}${rest}`, placeholder };
 }
 
 /** The words a reader clicks, for an <a> found in markup - so the review can say which link it is. */
@@ -154,6 +165,7 @@ export function findInString(s, ctx) {
       from: u.url,
       to: r.to,
       code: r.code,
+      placeholder: r.placeholder,
       at: r.at,
       target: r.target,
       context: u.context,
@@ -237,9 +249,9 @@ export function scanContent(content, ctx) {
   return { components, nodes };
 }
 
-/** Only the links into codes AEM confirmed are sites; a component left with none is dropped. */
+/** Only the links into codes AEM confirmed are sites, and placeholders; a component left with none is dropped. */
 export function keepSites(components, sites) {
   return components
-    .map((c) => ({ ...c, links: c.links.filter((l) => sites.has(l.code)) }))
+    .map((c) => ({ ...c, links: c.links.filter((l) => l.placeholder || sites.has(l.code)) }))
     .filter((c) => c.links.length);
 }

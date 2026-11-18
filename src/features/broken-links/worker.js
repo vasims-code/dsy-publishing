@@ -17,7 +17,7 @@ import { humanize, norm } from '../../core/paths.js';
 import { componentTypes, fieldLabel } from '../copy-deck/core.js';
 import { readDialogs } from '../copy-deck/dialog.js';
 import { readPageCopy } from '../copy-deck/worker.js';
-import { scanContent, siteContext, targetsOf, verdict } from './links.js';
+import { anchorVerdict, idsIn, scanContent, siteContext, targetsOf, verdict } from './links.js';
 
 /** How many lookups go to the server at once. Kind to a busy author instance; quick enough on a long page. */
 const PARALLEL = 6;
@@ -318,12 +318,14 @@ export const actions = {
     const linkCount = components.reduce((n, c) => n + c.links.length, 0);
 
     for (const t of targets) {
-      if (t.kind === 'page') continue;
-      t.state = t.kind === 'placeholder' ? 'placeholder' : 'unchecked';
+      if (t.kind === 'page' || t.kind === 'anchor') continue;
+      t.state = t.kind === 'placeholder' ? 'placeholder' : t.kind === 'badhost' ? 'missing' : 'unchecked';
+      if (t.kind === 'badhost') report('fail', `no .com  ${t.raw}  ←  ${whereOf(t.uses[0])}${t.uses.length > 1 ? ` and ${t.uses.length - 1} more` : ''}`);
       if (t.kind === 'asset') t.note = 'images and files are not checked, on purpose';
       else if (t.kind === 'external') t.note = 'another site - not checked, on purpose';
     }
-    const toCheck = targets.filter((t) => !t.state);
+    const toCheck = targets.filter((t) => !t.state && t.kind === 'page');
+    const anchors = targets.filter((t) => t.kind === 'anchor');
     step(
       'find',
       'done',
@@ -340,22 +342,44 @@ export const actions = {
     /* ---- 3. each one, on author ------------------------------------------ */
     step('check', toCheck.length ? 'running' : 'done', toCheck.length ? `0 of ${toCheck.length}` : 'nothing to check');
     let done = 0;
+    /* ?mini-led and ?mini-led1234 on one page are two targets but one page:
+       it is read once. */
+    const asked = new Map();
+    const lookupOnce = (path) => {
+      if (!asked.has(path)) asked.set(path, lookup(path));
+      return asked.get(path);
+    };
     await pool(toCheck, PARALLEL, async (t) => {
-      const answer = await lookup(t.path);
+      const answer = await lookupOnce(t.path);
       /* AEM's paths are case-sensitive and people's typing is not: a 404 for
          /sa_en/Galaxy-S is looked for again as /sa_en/galaxy-s, and said as
          a case difference rather than a missing page. */
-      const lower = answer.state === 'no' && t.path !== t.path.toLowerCase() ? await lookup(t.path.toLowerCase()) : null;
+      const lower = answer.state === 'no' && t.path !== t.path.toLowerCase() ? await lookupOnce(t.path.toLowerCase()) : null;
       Object.assign(t, verdict(t, answer, lower));
       done++;
       if (done % 2 === 0 || done === toCheck.length) step('check', 'running', `${done} of ${toCheck.length}`);
       if (t.state === 'missing') report('fail', `404  ${t.path}  ←  ${whereOf(t.uses[0])}${t.uses.length > 1 ? ` and ${t.uses.length - 1} more` : ''}`);
+      else if (t.state === 'query') report('warn', `check by hand  ${t.raw}: ${t.note}`);
       else if (t.state !== 'ok') report('warn', `${t.state}  ${t.path}: ${t.note}`);
     });
 
+    /* "#1", "#mini-led": an element on this page with that id. The ids are
+       read off the page as AEM renders it for a visitor - once, however many
+       anchors there are. A rendering that fails says so on each anchor rather
+       than calling them all broken. */
+    if (anchors.length) {
+      const html = await client.readRendered(page).catch(() => null);
+      const ids = html == null ? null : idsIn(html);
+      for (const t of anchors) {
+        Object.assign(t, anchorVerdict(t, ids));
+        if (t.state === 'missing') report('fail', `no id  ${t.raw}  ←  ${whereOf(t.uses[0])}${t.uses.length > 1 ? ` and ${t.uses.length - 1} more` : ''}`);
+        else if (t.state !== 'ok') report('warn', `${t.state}  ${t.raw}: ${t.note}`);
+      }
+    }
+
     const count = (state) => targets.filter((t) => t.state === state).length;
     const broken = count('missing');
-    const look = ['case', 'notpage', 'forbidden', 'error', 'placeholder'].reduce((n, s) => n + count(s), 0);
+    const look = ['case', 'notpage', 'forbidden', 'error', 'placeholder', 'query'].reduce((n, s) => n + count(s), 0);
     const ok = count('ok');
     step('check', 'done', broken ? `${plural(broken, 'broken link')} found` : 'none broken');
 
@@ -371,7 +395,7 @@ export const actions = {
       nodes,
       components: components.length,
       links: linkCount,
-      checked: toCheck.length,
+      checked: toCheck.length + anchors.length,
       broken,
       look,
       ok,

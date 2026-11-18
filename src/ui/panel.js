@@ -424,6 +424,22 @@ function goHome() {
   else render();
 }
 
+/**
+ * The Back button. A tool with a level of its own - Links, whose three tools
+ * sit behind a chooser - goes up that level first, by setting `own.onBack`
+ * to a function that returns true when it went somewhere. Only from the top
+ * of a tool does Back go home.
+ */
+function goBack() {
+  if (running()) return;
+  const own = state.toolId ? toolState.get(state.toolId) : null;
+  if (typeof own?.onBack === 'function' && own.onBack()) {
+    toTop();
+    return;
+  }
+  goHome();
+}
+
 /* --------------------------------------------------------------- render */
 
 /** Each draw gets a number; a draw that is no longer the latest stops. */
@@ -482,7 +498,7 @@ async function boot() {
   $('back').append(icon('back', 20));
   $('brand').append(icon('yard', 20, 2));
   $('settings').append(icon('gear', 19));
-  $('back').addEventListener('click', goHome);
+  $('back').addEventListener('click', goBack);
   watchRuns(setBackBusy);
   $('settings').addEventListener('click', () => chrome.runtime.openOptionsPage());
 

@@ -50,6 +50,7 @@ function rowsFrom(scan) {
         node: c.node,
         where: `${c.title || c.type || c.node} · ${link.prop}`,
         liveCopy: !!c.liveCopy,
+        placeholder: !!link.placeholder,
         missing: link.exists === 'no',
         unchecked: link.exists !== 'yes' && link.exists !== 'no',
         link
@@ -60,7 +61,7 @@ function rowsFrom(scan) {
 }
 
 /** A row that is never ticked for you and is called out on the review. */
-const flagged = (r) => r.liveCopy || r.missing || r.unchecked;
+const flagged = (r) => r.liveCopy || r.placeholder || r.missing || r.unchecked;
 
 /** The ticked rows, grouped back into the per-property shape `fix` wants. */
 function picksFrom(rows, ticked) {
@@ -286,7 +287,8 @@ export async function render(ctx) {
     if (needLook.length) {
       const missingN = needLook.filter((r) => r.missing).length;
       const uncheckedN = needLook.filter((r) => r.unchecked && !r.missing).length;
-      const liveN = needLook.filter((r) => r.liveCopy && !r.missing && !r.unchecked).length;
+      const placeholderN = needLook.filter((r) => r.placeholder && !r.missing && !r.unchecked).length;
+      const liveN = needLook.filter((r) => r.liveCopy && !r.placeholder && !r.missing && !r.unchecked).length;
       const warn = el('div', 'notice-stack');
       const line = (iconName, strong, rest) => {
         const row = el('div', 'notice-line');
@@ -306,6 +308,13 @@ export async function render(ctx) {
       }
       if (uncheckedN) {
         line('warn', `${plural(uncheckedN, 'link')} could not be checked on /${site}.`, they(uncheckedN));
+      }
+      if (placeholderN) {
+        line(
+          'warn',
+          `${plural(placeholderN, 'link')} ${placeholderN === 1 ? 'has a placeholder' : 'have placeholders'} such as {site_code} where the site code goes.`,
+          `The component may fill ${placeholderN === 1 ? 'it' : 'them'} in when the page is published. Tick one only if it should always point at /${site}. ${they(placeholderN)}`
+        );
       }
       if (liveN) {
         line('history', `${plural(liveN, 'link')} ${liveN === 1 ? 'is' : 'are'} on an inherited component.`, 'Fixing breaks inheritance for that property, so they are unticked.');
@@ -543,6 +552,7 @@ function linkRow(row, site, ticked, redraw) {
   where.append(el('span', null, link.text ? `${row.where} · “${link.text}”` : row.where));
   if (row.missing) where.append(el('span', 'link-tag', `Not on /${site}`));
   else if (row.unchecked) where.append(el('span', 'link-tag', 'Not checked'));
+  else if (row.placeholder) where.append(el('span', 'link-tag', 'Placeholder'));
   else if (row.liveCopy) where.append(el('span', 'link-tag', 'Inherited'));
 
   const url = el('div', 'link-url');

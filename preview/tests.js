@@ -258,6 +258,186 @@ test('Link Fixer · another country and inherited links are not ticked', async (
   has(ctx, '2 of 4 selected', 'only the safe two are ticked');
 });
 
+/* ===================================================== Broken Link Finder */
+
+/* Shaped like the broken-links worker's scan result: a page whose link
+   carries a filter after it, which author cannot confirm. */
+const LINKS_SCAN = () => ({
+  page: '/content/samsung/iq_ar/tvs/what-is-mini-led',
+  title: 'What is Mini LED',
+  host: 'p6-ap-author.samsung.com',
+  origin: 'https://p6-ap-author.samsung.com',
+  contentRoot: '/content/samsung',
+  site: 'iq_ar',
+  hosts: ['www.samsung.com'],
+  pd: false,
+  nodes: 4,
+  components: 1,
+  links: 1,
+  checked: 1,
+  broken: 0,
+  look: 1,
+  ok: 0,
+  unchecked: 0,
+  at: Date.now(),
+  targets: [
+    {
+      key: 'page|/content/samsung/in/tvs/all-tvs?mini-led1234',
+      kind: 'page',
+      path: '/content/samsung/in/tvs/all-tvs',
+      raw: '/in/tvs/all-tvs/?mini-led1234',
+      site: 'in',
+      query: '?mini-led1234',
+      state: 'query',
+      title: 'All TVs',
+      note: 'the page is on author, but "?mini-led1234" after it could not be checked - open the link and check it by hand',
+      uses: [{ node: 'text', component: 'Text Editor', section: '01 · Text Editor', field: 'Description', within: '', prop: 'description', index: -1, raw: '/in/tvs/all-tvs/?mini-led1234', text: 'M80H', context: 'attribute', pos: 0 }]
+    }
+  ]
+});
+
+test('Broken Link Finder · a link with a query is sent to be checked by hand', async () => {
+  const mod = await import('/src/ui/screens/broken-links.js');
+  H.tab.reply = async (m) => (m.action === 'scan' ? { ok: true, result: LINKS_SCAN() } : { ok: false, error: 'nothing else is asked' });
+  const ctx = await mount(mod, { state: { page: { path: LINKS_SCAN().page, title: 'What is Mini LED' } } });
+  H.btn(ctx, 'Scan this page').click();
+  await H.until(() => H.shown(ctx).includes('Check by hand'));
+
+  has(ctx, 'Check by hand', 'the row is tagged for a person to check');
+  has(ctx, '?mini-led1234', 'the query is named');
+  has(ctx, 'need a look', 'it counts among the links that need a look');
+  hasNot(ctx, '1 broken', 'it is not called broken');
+  expect(!!H.btn(ctx, 'Open on author'), 'the page can be opened to check it');
+  const text = mod.reportText(LINKS_SCAN());
+  expect(/NEED A LOOK[\s\S]*\[Check by hand\] \/in\/tvs\/all-tvs\/\?mini-led1234/.test(text), 'the copied report lists it under Need a look');
+});
+
+test('Broken Link Finder · an anchor with no such id on the page is broken', async () => {
+  const mod = await import('/src/ui/screens/broken-links.js');
+  const use = (raw) => ({ node: 'cta', component: 'CTA', section: '02 · CTA', field: 'CTA link', within: '', prop: 'ctaUrl', index: -1, raw, text: 'Learn more', context: 'value', pos: 1 });
+  const scan = {
+    ...LINKS_SCAN(),
+    links: 2,
+    checked: 2,
+    broken: 1,
+    look: 0,
+    ok: 1,
+    targets: [
+      { key: 'anchor|#2', kind: 'anchor', id: '2', path: null, raw: '#2', state: 'missing', note: 'nothing on the page has id="2" - the link goes nowhere. If a script adds it in the browser, check it on the live page', uses: [use('#2')] },
+      { key: 'anchor|#1', kind: 'anchor', id: '1', path: null, raw: '#1', state: 'ok', uses: [use('#1')] }
+    ]
+  };
+  H.tab.reply = async (m) => (m.action === 'scan' ? { ok: true, result: scan } : { ok: false, error: 'nothing else is asked' });
+  const ctx = await mount(mod, { state: { page: { path: scan.page, title: 'What is Mini LED' } } });
+  H.btn(ctx, 'Scan this page').click();
+  await H.until(() => H.shown(ctx).includes('No such id'));
+
+  has(ctx, 'No such id', 'the broken anchor is tagged');
+  has(ctx, 'id="2"', 'and the note names the id');
+  expect(!H.btn(ctx, 'Open on author'), 'an anchor offers no page to open');
+  const text = mod.reportText(scan);
+  expect(/BROKEN[^\n]*\n\s+\[No such id\] #2/.test(text), 'the copied report lists #2 under Broken');
+  expect(/OK[^\n]*\n\s+\[OK\] #1/.test(text), 'and #1 under OK');
+});
+
+test('Broken Link Finder · www.samsung without .com is broken, with the address it should be', async () => {
+  const mod = await import('/src/ui/screens/broken-links.js');
+  const raw = 'https://www.samsung/iq_ar/tvs/tv-buying-guide/';
+  const scan = {
+    ...LINKS_SCAN(),
+    broken: 1,
+    look: 0,
+    targets: [
+      {
+        key: `badhost|${raw}`,
+        kind: 'badhost',
+        path: null,
+        href: raw,
+        host: 'www.samsung',
+        raw,
+        state: 'missing',
+        note: '"www.samsung" is missing ".com" - it should be https://www.samsung.com/iq_ar/tvs/tv-buying-guide/',
+        uses: [{ node: 'seo', component: 'SEO Schema Markup', section: 'SEO Schema Markup', field: 'Content html', within: '', prop: 'contentHtml', index: -1, raw, text: null, context: 'json', pos: 0 }]
+      }
+    ]
+  };
+  H.tab.reply = async (m) => (m.action === 'scan' ? { ok: true, result: scan } : { ok: false, error: 'nothing else is asked' });
+  const ctx = await mount(mod, { state: { page: { path: scan.page, title: 'TV Buying Guide' } } });
+  H.btn(ctx, 'Scan this page').click();
+  await H.until(() => H.shown(ctx).includes('No .com'));
+
+  has(ctx, 'No .com', 'the link is tagged');
+  has(ctx, 'https://www.samsung.com/iq_ar/tvs/tv-buying-guide/', 'the note gives the right address');
+  expect(/BROKEN[^\n]*\n\s+\[No \.com\]/.test(mod.reportText(scan)), 'the copied report lists it under Broken');
+});
+
+/* ================================================== Site Code Link Fixer */
+
+/* Shaped like the site-code-fixer worker's scan result: the SEO schema
+   markup's two placeholders, and one real link into another site. */
+const SITE_SCAN = () => {
+  const schema = '"@type": "Guide",\r\n  "url": "https://www.samsung.com/{site_code}/tvs/tv-buying-guide/"';
+  const at = schema.indexOf('https://');
+  return {
+    page: '/content/samsung/iq_ar/tvs/what-is-mini-led',
+    title: 'What is Mini LED',
+    site: 'iq_ar',
+    contentRoot: '/content/samsung',
+    nodes: 6,
+    count: 2,
+    otherSites: [{ code: 'in', links: 1 }, { code: '{site_code}', links: 1 }],
+    components: [
+      {
+        node: 'root/responsivegrid/cm_g_seo_schema_mark',
+        resourceType: 'samsung/components/content/consumer/global/common/cm-g-seo-schema-markup-content',
+        type: 'cm-g-seo-schema-markup-content',
+        title: 'SEO Schema Markup',
+        liveCopy: false,
+        links: [
+          { prop: 'contentHtml', index: -1, start: at, from: 'https://www.samsung.com/{site_code}/tvs/tv-buying-guide/', to: 'https://www.samsung.com/iq_ar/tvs/tv-buying-guide/', code: '{site_code}', placeholder: true, at: 24, target: '/content/samsung/iq_ar/tvs/tv-buying-guide', context: 'json', text: null, value: schema, exists: 'yes' }
+        ]
+      },
+      {
+        node: 'root/responsivegrid/cm_g_text_editor_cop/column1',
+        resourceType: 'samsung/components/content/consumer/global/common/cm-g-text-editor',
+        type: 'cm-g-text-editor',
+        title: 'Text Editor',
+        liveCopy: false,
+        links: [
+          { prop: 'description', index: -1, start: 9, from: '/in/tvs/all-tvs/?mini-led', to: '/iq_ar/tvs/all-tvs/?mini-led', code: 'in', placeholder: false, at: 1, target: '/content/samsung/iq_ar/tvs/all-tvs', context: 'attribute', text: 'M80H', value: '<a href="/in/tvs/all-tvs/?mini-led">M80H</a>', exists: 'yes' }
+        ]
+      }
+    ]
+  };
+};
+
+test('Site Code Link Fixer · a {site_code} placeholder is listed unticked, and fixed when ticked', async () => {
+  const mod = await import('/src/ui/screens/site-code-fixer.js');
+  H.tab.reply = async (m) => (m.action === 'scan' ? { ok: true, result: SITE_SCAN() } : { ok: true, result: { done: true, fixed: 1, left: 0, title: '1 link pointed at /iq_ar' } });
+  const ctx = await mount(mod, { state: { page: { path: SITE_SCAN().page, title: 'What is Mini LED' } } });
+  H.btn(ctx, 'Scan this page').click();
+  await H.until(() => H.shown(ctx).includes('Placeholder'));
+
+  has(ctx, 'Placeholder', 'the row is tagged as a placeholder');
+  has(ctx, 'placeholder such as {site_code}', 'the review says what it is');
+  has(ctx, '1 of 2 selected', 'only the real site code is ticked for the author');
+
+  const box = ctx.view.querySelector('input[aria-label^="Point https://www.samsung.com/{site_code}"]');
+  expect(!!box && !box.checked, 'the placeholder has an unticked box');
+  H.tick(box, true);
+  await H.settle(20);
+  has(ctx, '2 of 2 selected', 'ticking it selects it');
+  H.btn(ctx, 'Continue with').click();
+  await H.settle(20);
+  H.btn(ctx, 'in AEM').click();
+  const fix = await H.until(() => H.tab.sent.find((m) => m.action === 'fix'));
+  const sent = fix.params.picks.flatMap((p) => p.links);
+  expect(
+    sent.some((l) => l.from.includes('{site_code}') && l.to === 'https://www.samsung.com/iq_ar/tvs/tv-buying-guide/'),
+    'the fix sent replaces the placeholder with the page’s site code'
+  );
+});
+
 /* ================================================================= Backup */
 
 test('Backup · analyze, review the tree, run, done', async () => {
@@ -1765,6 +1945,58 @@ async function shell({ tabs, reply, lastFocused = 7 }) {
 
 const AP = 'https://p6-ap-author.samsung.com';
 const EU = 'https://p6-eu-author.samsung.com';
+
+test('Shell · Back from a link tool goes to the Links cards, then home', async () => {
+  const s = await shell({
+    tabs: [{ id: 1, windowId: 7, active: true, url: `${AP}/editor.html/content/samsung/iq_ar/tvs/tv-buying-guide.html`, title: 'TV buying guide' }],
+    reply: async () => ({ ok: true })
+  });
+  try {
+    const home = s.button('Find broken links, or fix');
+    expect(home && !home.disabled, `the Links row is there to press: ${s.text().slice(0, 300)}`);
+    home.click();
+    await H.until(() => s.text().includes('What do you want to do?'));
+    /* The card, by its own words: "Find broken links" alone is also the home row's summary. */
+    s.button('Check every button').click();
+    await H.until(() => s.text().includes('Broken link finder'));
+
+    s.$('back').click();
+    await H.until(() => s.text().includes('What do you want to do?'));
+    expect(s.$('title').textContent === 'Links', 'one press of Back is one level up: the Links cards');
+    expect(!s.text().includes('Broken link finder'), 'and the tool is left');
+
+    s.$('back').click();
+    await H.until(() => !s.text().includes('What do you want to do?'));
+    expect(s.$('back').hidden, 'a second press goes home');
+  } finally {
+    s.done();
+  }
+});
+
+test('Shell · Back from Export or Import goes to the Copy deck cards, then home', async () => {
+  const s = await shell({
+    tabs: [{ id: 1, windowId: 7, active: true, url: `${AP}/editor.html/content/samsung/iq_ar/tvs/tv-buying-guide.html`, title: 'TV buying guide' }],
+    reply: async () => ({ ok: true })
+  });
+  try {
+    for (const card of ['Export the text of the open page', 'Paste or upload the translated rows']) {
+      s.button('Export page text, import translations').click();
+      await H.until(() => s.text().includes('What do you want to do?'));
+      s.button(card).click();
+      await H.until(() => !s.text().includes('What do you want to do?'));
+
+      s.$('back').click();
+      await H.until(() => s.text().includes('What do you want to do?'));
+      expect(s.$('title').textContent === 'Copy deck', `${card}: one press of Back is one level up, to the cards`);
+
+      s.$('back').click();
+      await H.until(() => s.$('back').hidden);
+      expect(!s.text().includes('What do you want to do?'), `${card}: a second press goes home`);
+    }
+  } finally {
+    s.done();
+  }
+});
 
 test('Shell · a page address with a stray % still draws the panel', async () => {
   for (const url of [`${AP}/content/samsung/uk/100%.html`, `${AP}/editor.html/content/samsung/uk/x%E2%82.html`]) {
