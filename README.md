@@ -328,8 +328,9 @@ It uses `tools/fixtures/` - the two real pages with every piece of copy
 replaced, the shape and the resource types kept - or the real JSON if you set
 `DSY_DATA` to a folder holding `src.json` and `dst.json`.
 
-The direction runs again, with a standing warning on the screen. Take a backup
-you can reach and look at the page afterwards.
+The direction runs again. The standing warning that used to be on the screen
+was taken off on purpose; the two guards are what stop that plan now. Take a
+backup you can reach and look at the page afterwards.
 
 **A backup is not always possible.** `backupPathFor` refuses a page that is
 already inside the backup folder, which is how the 1 November run wrote with no

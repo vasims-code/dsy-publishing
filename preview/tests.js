@@ -479,16 +479,16 @@ test('Backup · a large removal is held until it is confirmed', async () => {
   H.tab.reply = async () => ({ ok: true, result: BACKUP({ mode: 'update', sync, update: { path: 'x' }, copy: null }) });
   const ctx = await mount(mod);
   H.btn(ctx, 'Analyze paths').click();
-  await H.until(() => H.shown(ctx).includes('That is a lot to remove'));
+  await H.until(() => H.shown(ctx).includes('This will delete a lot from the backup page'));
 
-  has(ctx, 'That is a lot to remove', 'it warns about the scale');
-  expect(H.btn(ctx, 'Tick the removals box')?.disabled, 'the write waits for the tick');
+  has(ctx, 'This will delete a lot from the backup page', 'it warns about the scale');
+  expect(H.btn(ctx, 'Tick the box above')?.disabled, 'the write waits for the tick');
 
-  const box = ctx.view.querySelector('input[aria-label*="remove them anyway"]');
+  const box = ctx.view.querySelector('input[aria-label*="delete these from the backup page"]');
   expect(!!box, 'there must be a box to tick');
   H.tick(box, true);
   await H.settle(40);
-  expect(!H.btn(ctx, 'Tick the removals box'), 'once ticked the button changes');
+  expect(!H.btn(ctx, 'Tick the box above'), 'once ticked the button changes');
 });
 
 /* =============================================================== Versions */
@@ -773,10 +773,10 @@ test('Copy a page · the two confirmations hold the run back', async () => {
   H.setValue(H.input(ctx, 'Destination page'), '/content/samsung/lb/a');
   await H.settle(20);
   H.btn(ctx, 'Analyze').click();
-  await H.until(() => H.btn(ctx, 'Tick the removals box'));
+  await H.until(() => H.btn(ctx, 'Tick the box above'));
 
-  expect(H.btn(ctx, 'Tick the removals box')?.disabled, 'the removals box holds it');
-  H.tick(ctx.view.querySelector('input[aria-label*="remove them anyway"]'), true);
+  expect(H.btn(ctx, 'Tick the box above')?.disabled, 'the removals box holds it');
+  H.tick(ctx.view.querySelector('input[aria-label*="delete these from the destination page"]'), true);
   await H.settle(40);
 
   /* Losing components still holds the run. The destination's own page
@@ -851,8 +851,8 @@ test('Copy a page · the write carries both acknowledgements', async () => {
   await H.settle(20);
   H.btn(ctx, 'Analyze').click();
   // The box itself, not the absence of the run screen: that is true before the analysis has even started.
-  await H.until(() => ctx.view.querySelector('input[aria-label*="remove them anyway"]'), { ms: 4000 });
-  H.tick(ctx.view.querySelector('input[aria-label*="remove them anyway"]'), true);
+  await H.until(() => ctx.view.querySelector('input[aria-label*="delete these from the destination page"]'), { ms: 4000 });
+  H.tick(ctx.view.querySelector('input[aria-label*="delete these from the destination page"]'), true);
   await H.settle(30);
   H.tick(ctx.view.querySelector('input[aria-label*="Overwrite these"]'), true);
   await H.settle(30);
@@ -907,18 +907,15 @@ test('Copy a page · another server starts from the page open in this tab', asyn
   has(ctx, 'Choose an instance', 'the unchosen menu says so');
 });
 
-test('Copy a page · the cross-server direction warns about the fault of 1 November', async () => {
+/* The standing warning about 1 November was taken off the screen on purpose;
+   the two guards in the engine are what stop that plan now. */
+test('Copy a page · a copy between servers can be started', async () => {
   const mod = await import('/src/ui/screens/copy-page.js');
   const two = ['https://p6-ap-author.samsung.com', 'https://p6-eu-author.samsung.com'];
   const ctx = await mount(mod, { state: { settings: { origins: two, rootDepth: 3, backupFolder: 'india/backup' } } });
   H.btn(ctx, 'Another server').click();
-  await H.until(() => H.shown(ctx).includes('1 November'));
+  await H.until(() => ctx.view.querySelector('select[aria-label="Destination server"]'));
 
-  has(ctx, 'none of their content', 'it says what went wrong');
-  has(ctx, 'still not known', 'and that the cause is not yet understood');
-  has(ctx, 'look at the page afterwards', 'and what to do about it');
-
-  /* Warned, not blocked: with both paths filled in it runs. */
   H.setValue(H.input(ctx, 'Destination page'), '/content/samsung/lb/a');
   const dst = ctx.view.querySelector('select[aria-label="Destination server"]');
   dst.value = 'https://p6-eu-author.samsung.com';
@@ -1032,16 +1029,6 @@ test('Copy a page · a write that did not all land says so, never that it matche
   has(ctx, '2 of the 20', 'with how much holds');
   has(ctx, 'text_0 headline', 'and what did not');
   hasNot(ctx, 'now matches the source', 'and it never claims a match');
-});
-
-test('Copy a page · the 1 November warning stays on every step between servers', async () => {
-  const mod = await import('/src/ui/screens/copy-page.js');
-  const review = await mount(mod, { own: transferAt('review', { summary: CPX() }) });
-  has(review, '1 November', 'on the review');
-  const confirm = await mount(mod, { own: transferAt('confirm', { summary: CPX() }) });
-  has(confirm, '1 November', 'and on the confirmation');
-  const here = await mount(mod, { own: { ...transferAt('review', { summary: CP({ mode: 'sync' }) }), where: 'this' } });
-  hasNot(here, '1 November', 'but not on a copy within one server');
 });
 
 /* =========================================================== Copy deck */
@@ -1943,6 +1930,15 @@ async function shell({ tabs, reply, lastFocused = 7 }) {
   return { frame, doc, world, $, text, button, activate, done: () => frame.remove() };
 }
 
+/* The Relative Link Fixer, opened the way a person does since 1.4.2: the
+   Links row on the home screen, then its card. */
+async function openLinkFixer(s) {
+  s.button('Find broken links, or fix').click();
+  await H.until(() => s.button('Turn full addresses'));
+  s.button('Turn full addresses').click();
+  await H.until(() => s.button('Scan this page'));
+}
+
 const AP = 'https://p6-ap-author.samsung.com';
 const EU = 'https://p6-eu-author.samsung.com';
 
@@ -2003,7 +1999,7 @@ test('Shell · a page address with a stray % still draws the panel', async () =>
     const s = await shell({ tabs: [{ id: 1, windowId: 7, active: true, url, title: '100%' }], reply: async () => ({ ok: true }) });
     try {
       expect(s.text().includes('Connected'), `${url}: the panel drew its home screen`);
-      expect(s.text().includes('Relative Link Fixer'), `${url}: with its tools`);
+      expect(s.text().includes('Find broken links, or fix how links are written'), `${url}: with its tools`);
     } finally {
       s.done();
     }
@@ -2038,8 +2034,7 @@ test('Shell · a tool stays with the tab it read, and its write goes there', asy
     reply: async (m) => (m.action === 'scan' ? { ok: true, result: SCAN() } : { ok: true, result: { done: true, fixed: 2, left: 0 } })
   });
   try {
-    s.button('Relative Link Fixer').click();
-    await H.until(() => s.button('Scan this page'));
+    await openLinkFixer(s);
     s.button('Scan this page').click();
     await H.until(() => s.button('Continue with'));
 
@@ -2054,8 +2049,11 @@ test('Shell · a tool stays with the tab it read, and its write goes there', asy
     expect(fix.tabId === 1, `the write went to tab ${fix.tabId}, not the tab it read`);
     expect(fix.origin === AP, `and was meant for ${fix.origin}`);
 
-    // Back at the tools, the panel follows the tab in front again.
+    // Back at the tools, the panel follows the tab in front again. Back goes
+    // up one level at a time: to the Links cards, then home.
     await H.until(() => s.text().includes('made relative'));
+    s.$('back').click();
+    await H.until(() => s.text().includes('What do you want to do?'));
     s.$('back').click();
     await H.until(() => s.text().includes('p6-eu-author'));
   } finally {
@@ -2075,8 +2073,7 @@ test('Shell · Back waits while a write is under way, and the result is kept', a
     }
   });
   try {
-    s.button('Relative Link Fixer').click();
-    await H.until(() => s.button('Scan this page'));
+    await openLinkFixer(s);
     s.button('Scan this page').click();
     await H.until(() => s.button('Continue with'));
     expect(!s.$('back').disabled, 'Back works while nothing is running');
@@ -2088,7 +2085,7 @@ test('Shell · Back waits while a write is under way, and the result is kept', a
     expect(s.$('back').disabled, 'Back is held while the write runs');
     s.$('back').click();
     await H.settle(30);
-    expect(s.$('title').textContent === 'Relative Link Fixer', 'and pressing it leaves the tool open');
+    expect(s.$('title').textContent === 'Links' && !s.text().includes('What do you want to do?'), 'and pressing it leaves the tool open, where it was');
 
     release();
     await H.until(() => s.text().includes('made relative'));
