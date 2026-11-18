@@ -461,6 +461,17 @@ test('Backup · analyze, review the tree, run, done', async () => {
   has(ctx, 'Where it went', 'it says where it went');
 });
 
+test("Backup · a site's home page goes to the backup folder as home", async () => {
+  const mod = await import('/src/ui/screens/backup.js');
+  const ctx = await mount(mod, {
+    state: { page: { path: '/content/samsung/levant_ar', title: 'Samsung Levant' }, settings: { rootDepth: 3, backupFolder: 'india/backup' } }
+  });
+  has(ctx, '/content/samsung/levant_ar/india/backup/home', 'the backup page is named');
+  has(ctx, 'backed up as "home"', 'and the hint says why it is not the usual path');
+  hasNot(ctx, 'has no backup location', 'it is not refused');
+  expect(!H.btn(ctx, 'Analyze paths').disabled, 'it can be analyzed');
+});
+
 test('Backup · a backup that already matches offers nothing to write', async () => {
   const mod = await import('/src/ui/screens/backup.js');
   H.tab.reply = async () => ({ ok: true, result: BACKUP({ mode: 'update', upToDate: true, update: { path: 'x' }, copy: null }) });
@@ -757,6 +768,89 @@ test('Copy a page · this server: analyze, confirm, run, result', async () => {
   H.btn(ctx, 'Copy page').click();
   await H.until(() => H.shown(ctx).includes('What happened'));
   has(ctx, 'What happened', 'the result says what happened');
+});
+
+/* Shaped like page-upsert's `components` action: both pages' components in page order. */
+const PARTS = () => ({
+  source: {
+    page: '/content/samsung/uk/a',
+    title: 'A',
+    components: [
+      { rel: '/root/responsivegrid', name: 'responsivegrid', resourceType: 'wcm/foundation/components/responsivegrid', type: 'responsivegrid', headline: null, depth: 0, container: true, title: 'Layout Container' },
+      { rel: '/root/responsivegrid/feature', name: 'feature', resourceType: 'samsung/components/feature', type: 'feature', headline: 'What is Mini LED?', depth: 1, container: false, title: 'FT02_Feature Benefit' }
+    ]
+  },
+  dest: {
+    page: '/content/samsung/lb/a',
+    title: 'A',
+    components: [
+      { rel: '/root/responsivegrid', name: 'responsivegrid', resourceType: 'wcm/foundation/components/responsivegrid', type: 'responsivegrid', headline: null, depth: 0, container: true, title: 'Layout Container' },
+      { rel: '/root/responsivegrid/text_1', name: 'text_1', resourceType: 'samsung/components/text', type: 'text', headline: 'Second', depth: 1, container: false, title: 'Text Block' }
+    ]
+  }
+});
+const COMPONENT = { from: '/root/responsivegrid/feature', to: '/root/responsivegrid/feature', name: 'feature', renamed: false, container: '/root/responsivegrid', before: '/root/responsivegrid/text_1', into: null, resourceType: 'samsung/components/feature', nodes: 2 };
+
+test('Copy a component · choose it, place it, review, copy', async () => {
+  const mod = await import('/src/ui/screens/copy-component.js');
+  H.tab.sent = [];
+  H.tab.reply = async (m) =>
+    m.action === 'components'
+      ? { ok: true, result: PARTS() }
+      : m.action === 'analyze'
+        ? { ok: true, result: CP({ component: COMPONENT }) }
+        : { ok: true, result: { ...CP({ component: COMPONENT }), done: true } };
+  const ctx = await mount(mod, { state: { page: { path: '/content/samsung/uk/a', title: 'A' } } });
+
+  await H.until(() => H.btn(ctx, 'Choose the component'));
+  hasNot(ctx, 'Remove components that no longer exist', 'the whole-page removal box is not offered');
+  expect(!H.btn(ctx, 'Another server'), 'there is no server to choose: a component is copied on this server');
+  H.setValue(H.input(ctx, 'Destination page'), '/content/samsung/lb/a');
+  await H.settle(20);
+  expect(H.btn(ctx, 'Analyze').disabled, 'nothing to analyze before a component is chosen');
+
+  H.btn(ctx, 'Choose the component').click();
+  await H.until(() => ctx.view.querySelector('select[aria-label="Component to copy"]'));
+  const pick = (aria, value) => {
+    const sel = ctx.view.querySelector(`select[aria-label="${aria}"]`);
+    sel.value = value;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  has(ctx, 'FT02_Feature Benefit · What is Mini LED?', 'components are named as the editor names them, with their headline');
+  pick('Component to copy', '/root/responsivegrid/feature');
+  expect(H.btn(ctx, 'Analyze').disabled, 'nor before where it goes');
+  pick('Put it above', 'before:/root/responsivegrid/text_1');
+  expect(!H.btn(ctx, 'Analyze').disabled, 'with both, it can be analyzed');
+
+  H.btn(ctx, 'Analyze').click();
+  await H.until(() => H.shown(ctx).includes('Goes'));
+  const analyze = H.tab.sent.find((m) => m.action === 'analyze');
+  expect(
+    analyze.params.component?.from === '/root/responsivegrid/feature' && analyze.params.component?.before === '/root/responsivegrid/text_1',
+    `the analysis is asked for that component and place: ${JSON.stringify(analyze.params.component)}`
+  );
+  expect(analyze.feature === 'component-copy', `and of its own feature, not Copy a page's: ${analyze.feature}`);
+  has(ctx, 'above Text Block · Second', 'the review says where it goes');
+
+  H.btn(ctx, 'Continue to copy').click();
+  await H.until(() => H.btn(ctx, 'Copy component'));
+  has(ctx, 'Add this component to a?', 'the confirmation is about a component, not the page');
+  H.btn(ctx, 'Copy component').click();
+  const run = await H.until(() => H.tab.sent.find((m) => m.action === 'run'));
+  expect(run.params.component?.from === '/root/responsivegrid/feature', 'the write carries the component');
+  await H.until(() => H.shown(ctx).includes('Component copied'));
+  has(ctx, 'Nothing else on the page was changed', 'the done step says what it did');
+});
+
+test('Copy a page · copies whole pages only: the component tool is its own', async () => {
+  const mod = await import('/src/ui/screens/copy-page.js');
+  const ctx = await mount(mod);
+  expect(!H.btn(ctx, 'One component'), 'no component choice on Copy a page');
+  expect(!H.btn(ctx, 'Choose the component'), 'and no component picker');
+  has(ctx, 'Remove components that no longer exist', 'it copies the whole page');
+  const { TOOLS } = await import('/src/ui/tools.js');
+  const tool = TOOLS.find((t) => t.id === 'copy-component');
+  expect(tool?.title === 'Copy a component' && tool.features.join() === 'component-copy', 'Copy a component has its own home row and feature');
 });
 
 test('Copy a page · the two confirmations hold the run back', async () => {
@@ -2000,6 +2094,7 @@ test('Shell · a page address with a stray % still draws the panel', async () =>
     try {
       expect(s.text().includes('Connected'), `${url}: the panel drew its home screen`);
       expect(s.text().includes('Find broken links, or fix how links are written'), `${url}: with its tools`);
+      expect(s.text().includes('Copy one component into another page'), `${url}: Copy a component among them`);
     } finally {
       s.done();
     }
@@ -2039,7 +2134,8 @@ test('Shell · a tool stays with the tab it read, and its write goes there', asy
     await H.until(() => s.button('Continue with'));
 
     await s.activate(2, 7);
-    await H.until(() => s.text().includes('Still working on'));
+    await H.settle(60);
+    expect(!s.text().includes('Still working on'), 'no note about the tab in front - it only confused');
     expect(s.text().includes('p6-ap-author'), 'the tool still shows the server it read');
 
     s.button('Continue with').click();

@@ -15,7 +15,7 @@
  * folder cannot accidentally ship.
  */
 
-export const FEATURE_IDS = ['page-copy', 'page-upsert', 'page-transfer', 'page-versions', 'copy-deck', 'copy-deck-import', 'link-fixer', 'site-code-fixer', 'arabic-fixer', 'broken-links'];
+export const FEATURE_IDS = ['page-copy', 'page-upsert', 'page-transfer', 'page-versions', 'copy-deck', 'copy-deck-import', 'link-fixer', 'site-code-fixer', 'arabic-fixer', 'broken-links', 'component-copy'];
 
 /** Panel side: metadata only, cheap to load. */
 export async function loadMeta(id) {

@@ -68,6 +68,13 @@ export async function render(ctx) {
     Object.assign(own, {
       phase: 'pick',
       where: 'this',
+      /* 'page', or 'component' when drawn for Copy a component
+         (screens/copy-component.js). */
+      what: 'page',
+      parts: null,
+      partsFor: '',
+      compFrom: '',
+      compPlace: '',
       source: null,
       dest: '',
       sourceOrigin: '',
@@ -97,6 +104,17 @@ export async function render(ctx) {
   }
 
   if (own.source == null) own.source = state.page?.path || '';
+
+  /* Drawn for Copy a component: one component, on this server. Between
+     servers a page goes through the two-tab transfer, which copies pages. */
+  const componentOnly = ctx.componentOnly === true;
+  if (componentOnly) {
+    own.what = 'component';
+    own.where = 'this';
+  }
+  /* Each tool asks its own feature: the plan is the same, but a component
+     copy refuses to run without a component (features/component-copy). */
+  const FEATURE = componentOnly ? 'component-copy' : 'page-upsert';
 
   const redraw = () => ctx.render();
   const goStep = (phase) => {
@@ -156,7 +174,8 @@ export async function render(ctx) {
       });
       seg.append(b);
     }
-    view.append(seg);
+    // A component is copied on this server only, so there is nothing to ask.
+    if (!componentOnly) view.append(seg);
 
     const origins = state.settings?.origins || [];
 
@@ -165,12 +184,30 @@ export async function render(ctx) {
        mid-word would take the focus out of the box. */
     let analyzeBtn = null;
     let footerNote = null;
-    const isReady = () => own.source.startsWith('/content/') && own.dest.startsWith('/content/');
+    const component = componentOnly;
+    const pathsReady = () => own.source.startsWith('/content/') && own.dest.startsWith('/content/');
+    /* The component lists belong to the two paths they were read for. */
+    const partsFresh = () => !!own.parts && own.partsFor === `${own.source}|${own.dest}`;
+    const isReady = () => pathsReady() && (!component || (partsFresh() && !!own.compFrom && !!own.compPlace));
+    const readyNote = () =>
+      !pathsReady()
+        ? 'Both paths are needed'
+        : !component
+          ? '1 page'
+          : !partsFresh()
+            ? 'Choose the component'
+            : !own.compFrom
+              ? 'Pick a component'
+              : !own.compPlace
+                ? 'Pick where it goes'
+                : '1 component';
+    let chooseBtn = null;
     const syncReady = () => {
-      const ok = isReady();
-      if (analyzeBtn) analyzeBtn.disabled = !ok;
-      if (footerNote) footerNote.textContent = ok ? '1 page' : 'Both paths are needed';
+      if (analyzeBtn) analyzeBtn.disabled = !isReady();
+      if (footerNote) footerNote.textContent = readyNote();
+      if (chooseBtn) chooseBtn.disabled = !pathsReady();
     };
+
 
     view.append(label('From'));
     const sourceField = pathField('Source page', own.source, '/content/samsung/uk/offers/spring-sale', (v) => {
@@ -211,7 +248,9 @@ export async function render(ctx) {
       syncReady();
     }, another
       ? 'Created if it is not there yet.'
-      : 'Created if it is not there yet. Its parent must already exist.');
+      : component
+        ? 'The page the component is added to. It must already exist.'
+        : 'Created if it is not there yet. Its parent must already exist.');
 
     /* The same page usually sits at the same path on both servers, so offer
        that rather than leave a long path to be typed out. */
@@ -237,7 +276,32 @@ export async function render(ctx) {
     toCard.append(destField);
     view.append(toCard);
 
-    view.append(
+    if (component) {
+      view.append(label('The component'));
+      const card = el('div', 'field-card');
+      chooseBtn = button(partsFresh() ? 'Read both pages again' : 'Choose the component', 'ghost', doComponents, {
+        disabled: !pathsReady(),
+        iconName: 'search'
+      });
+      card.append(chooseBtn);
+      if (partsFresh()) {
+        card.append(
+          pickField('Component to copy', own.compFrom, componentOptions(own.parts.source.components), (v) => {
+            own.compFrom = v;
+            syncReady();
+          }, `From ${own.parts.source.page}. It is copied with everything inside it.`),
+          pickField('Put it above', own.compPlace, placeOptions(own.parts.dest.components), (v) => {
+            own.compPlace = v;
+            syncReady();
+          }, `On ${own.parts.dest.page}. Nothing already on the page is changed or removed.`)
+        );
+      } else {
+        card.append(el('div', 'field-hint', 'Reads both pages and lists their components. Nothing is written.'));
+      }
+      view.append(card);
+    }
+
+    if (!component) view.append(
       list([
         check(
           'Remove components that no longer exist at the source',
@@ -277,7 +341,17 @@ export async function render(ctx) {
     );
     view.append(adv);
 
-    view.append(
+    if (component) {
+      view.append(
+        ...whatHappens([
+          ['eye', 'Analyze only reads. You see everything that would change before anything is written.'],
+          ['copy', 'The component is added to the destination page above the one you pick, with everything inside it.'],
+          ['history', 'If the destination already has a component with that name, the copy gets a new name - nothing is overwritten.'],
+          ['link', 'Between two sites, its links and image references are re-pointed to the destination site, and images its DAM lacks are uploaded. On the same site it is copied as it is.'],
+          ['deck', 'Nothing else on the destination page changes: not its other components, not its page properties.']
+        ])
+      );
+    } else view.append(
       ...whatHappens([
         ['eye', 'Analyze only reads. You see everything that would change before anything is written.'],
         ['copy', 'The source page is copied onto the destination. If the destination is not there yet, it is created.'],
@@ -292,7 +366,7 @@ export async function render(ctx) {
     footer.append(
       ...footerBar({
         tag: { kind: 'read', text: 'Read-only' },
-        note: isReady() ? '1 page' : 'Both paths are needed',
+        note: readyNote(),
         buttons: [analyzeBtn]
       })
     );
@@ -335,7 +409,26 @@ export async function render(ctx) {
     view.append(
       list([
         kv(another ? `From · ${host(own.sourceOrigin)}` : 'From · this server', s.source, true),
-        kv(another ? `To · ${host(own.destOrigin)}` : 'To · this server', s.dest, true)
+        kv(another ? `To · ${host(own.destOrigin)}` : 'To · this server', s.dest, true),
+        ...(s.component
+          ? [
+              kv('Component', componentName(own.parts?.source.components, s.component.from), true),
+              kv(
+                'Goes',
+                s.component.before
+                  ? `above ${componentName(own.parts?.dest.components, s.component.before)}`
+                  : `at the end of ${componentName(own.parts?.dest.components, s.component.into)}`,
+                true
+              ),
+              kv(
+                'Named',
+                s.component.renamed
+                  ? `${s.component.name} - the destination already has one called ${s.component.from.split('/').pop()}`
+                  : s.component.name,
+                true
+              )
+            ]
+          : [])
       ])
     );
 
@@ -717,10 +810,22 @@ export async function render(ctx) {
     head.append(dot, tag);
     sheet.append(
       head,
-      el('div', 'sheet-title', `Copy this page to ${host(another ? own.destOrigin : state.origin)}?`),
-      el('div', 'sheet-text', 'The page is read again from the source first, in case it changed since you reviewed it.'),
+      el(
+        'div',
+        'sheet-title',
+        s.component
+          ? `Add this component to ${s.dest.split('/').pop()}?`
+          : `Copy this page to ${host(another ? own.destOrigin : state.origin)}?`
+      ),
+      el(
+        'div',
+        'sheet-text',
+        s.component
+          ? 'Both pages are read again first, in case either changed since you reviewed them.'
+          : 'The page is read again from the source first, in case it changed since you reviewed it.'
+      ),
       list(rows),
-      button('Copy page', 'write', doRun, { iconName: 'pen' }),
+      button(s.component ? 'Copy component' : 'Copy page', 'write', doRun, { iconName: 'pen' }),
       button('Cancel', 'ghost', () => goStep('review'))
     );
     view.append(sheet);
@@ -816,7 +921,9 @@ export async function render(ctx) {
         )
       : left
         ? notice('warn', `Page copied. ${plural(left, 'image')} ${left === 1 ? 'needs' : 'need'} you.`, `The page was updated in AEM. The ${left === 1 ? 'image' : 'images'} below ${left === 1 ? 'was' : 'were'} not carried.`, 'warn')
-        : notice('ok', r.title || 'Page copied', 'The destination now matches the source.', 'check')
+        : r.component
+          ? notice('ok', 'Component copied', `${r.component.name} is on ${r.dest}. Nothing else on the page was changed.`, 'check')
+          : notice('ok', r.title || 'Page copied', 'The destination now matches the source.', 'check')
   );
   if (u) {
     const rows = (u.missing || []).map((m) => {
@@ -894,6 +1001,10 @@ export async function render(ctx) {
       keepSites: [...own.keepSites],
       copyDam: [...own.copyDam]
     };
+    if (componentOnly) {
+      const [how, rel] = own.compPlace.split(':');
+      p.component = { from: own.compFrom, [how === 'into' ? 'into' : 'before']: rel };
+    }
     if (another) {
       p.sourceOrigin = own.sourceOrigin;
       p.destOrigin = own.destOrigin;
@@ -1002,7 +1113,7 @@ export async function render(ctx) {
             }
           })
         : await runAction({
-            featureId: 'page-upsert',
+            featureId: FEATURE,
             action: 'analyze',
             params: params(),
             settings: state.settings,
@@ -1027,6 +1138,37 @@ export async function render(ctx) {
       keepPlace(redraw);
       return;
     }
+    toTop();
+    redraw();
+  }
+
+  /** Reads both pages' components for the two pickers. Reads only. */
+  async function doComponents() {
+    own.problem = null;
+    own.busy = 'components';
+    own.log.clear();
+    own.steps = [{ name: 'Reading both pages', state: 'running' }];
+    goStep('running');
+    try {
+      const parts = await runAction({
+        featureId: FEATURE,
+        action: 'components',
+        params: { source: own.source, dest: own.dest },
+        settings: state.settings,
+        tabId: state.tab?.id,
+        onReport: (msg) => own.log.onReport(msg)
+      });
+      own.parts = parts;
+      own.partsFor = `${own.source}|${own.dest}`;
+      // A choice from lists read for other pages means nothing on these.
+      if (!parts.source.components.some((c) => c.rel === own.compFrom)) own.compFrom = '';
+      if (!placeOptions(parts.dest.components).some((o) => o.value === own.compPlace)) own.compPlace = '';
+    } catch (e) {
+      own.log.add('fail', e.message);
+      own.problem = e.message;
+    }
+    own.busy = null;
+    own.phase = 'pick';
     toTop();
     redraw();
   }
@@ -1070,7 +1212,7 @@ export async function render(ctx) {
             step: markStep
           })
         : await runAction({
-            featureId: 'page-upsert',
+            featureId: FEATURE,
             action: 'run',
             params: writeParams(),
             settings: state.settings,
@@ -1197,6 +1339,53 @@ function originField(labelText, value, origins, onChange, hint) {
   field.append(select);
   if (hint) field.append(el('div', 'field-hint', hint));
   return field;
+}
+
+/** A choice from a list read off a page. */
+function pickField(labelText, value, options, onChange, hint) {
+  const field = el('div', 'field');
+  field.append(el('div', 'field-label', labelText));
+  const select = el('select');
+  select.setAttribute('aria-label', labelText);
+  const none = el('option', null, options.length ? 'Choose one' : 'Nothing on this page to choose');
+  none.value = '';
+  none.selected = !value;
+  select.append(none);
+  for (const o of options) {
+    const opt = el('option', null, o.text);
+    opt.value = o.value;
+    opt.selected = o.value === value;
+    select.append(opt);
+  }
+  select.disabled = !options.length;
+  select.addEventListener('change', () => onChange(select.value));
+  field.append(select);
+  if (hint) field.append(el('div', 'field-hint', hint));
+  return field;
+}
+
+/* A component as the editor names it, its headline beside it, indented by
+   how deep it sits - a select drops leading spaces, so no-break ones. */
+const componentText = (c) =>
+  `${'\u00a0\u00a0\u00a0'.repeat(c.depth)}${c.title || c.type}${c.headline ? ` · ${c.headline}` : ''}`;
+
+/** What can be copied: every component; a container comes with all it holds. */
+const componentOptions = (components) => components.map((c) => ({ value: c.rel, text: componentText(c) }));
+
+/** Where it can go: above any component, or at the end of a container. */
+function placeOptions(components) {
+  const out = components.map((c) => ({ value: `before:${c.rel}`, text: componentText(c) }));
+  for (const c of components.filter((x) => x.container)) {
+    out.push({ value: `into:${c.rel}`, text: `At the end of ${c.title || c.type} (${c.rel.split('/').pop()})` });
+  }
+  return out;
+}
+
+/** A component's name for the review, from the lists the pickers were filled from. */
+function componentName(components, rel) {
+  const c = (components || []).find((x) => x.rel === rel);
+  if (!c) return rel;
+  return `${c.title || c.type}${c.headline ? ` · ${c.headline}` : ''} (${rel.split('/').pop()})`;
 }
 
 function check(title, checked, onChange, hint, disabled) {

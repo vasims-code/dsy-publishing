@@ -29,6 +29,14 @@ export const TOOLS = [
     features: ['page-upsert', 'page-transfer']
   },
   {
+    id: 'copy-component',
+    icon: 'copy',
+    title: 'Copy a component',
+    summary: 'Copy one component into another page',
+    does: 'write',
+    features: ['component-copy']
+  },
+  {
     id: 'links',
     icon: 'link',
     title: 'Links',

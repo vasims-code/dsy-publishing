@@ -344,7 +344,6 @@ function drawTool(id, mod) {
      A line a worker reported should never be unreachable just because the
      screen the run ended on had nowhere obvious to put it. */
   const withLog = () => {
-    heldNote();
     if (!own.log?.lines.length || view.querySelector('.log-box')) return;
     view.append(logBox(own.log.lines));
   };
@@ -357,27 +356,10 @@ function drawTool(id, mod) {
   }
 }
 
-/**
- * Said at the top of a tool held to a tab that is no longer in front, so the
- * page and server it shows are never mistaken for the ones being looked at.
- */
-function heldNote() {
-  const view = $('view');
-  if (!state.elsewhere || !state.toolId || view.querySelector('.held-note')) return;
-  const box = el('div', 'notice held-note');
-  box.dataset.tone = 'warn';
-  const text = el('div', 'notice-text');
-  text.append(
-    el('div', 'notice-title', `Still working on ${hostOf(state.origin) || 'the tab it first read'}`),
-    el(
-      'div',
-      'notice-body',
-      'This tool stays with the tab it first read, whichever tab is in front. Go back to the tools to work on the tab in front instead.'
-    )
-  );
-  box.append(icon('warn', 20, 2), text);
-  view.prepend(box);
-}
+/* A tool held to a tab that is no longer in front says nothing about it: the
+   note it used to show ("Still working on …") confused more than it helped.
+   The hold itself is unchanged - every action still goes to the tab the tool
+   first read. */
 
 /* While a run is under way, going back would drop the tool's state with the
    run still writing into it, and its result would be lost. So Back waits. */

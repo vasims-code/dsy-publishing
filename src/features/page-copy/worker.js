@@ -124,6 +124,10 @@ async function buildPlan(client, settings, params) {
         sourcePath: source,
         template: srcInfo.template,
         title: srcInfo.title || humanize(st.name),
+        /* AEM's copy cannot rename, so a backup named other than its page -
+           a site's home page, backed up as .../backup/home - is made from the
+           page's template and then filled with its content (copyRenamed). */
+        rename: nameOf(st.destPath) !== nameOf(source),
         note: 'full content, no child pages'
       });
       continue;
@@ -215,7 +219,9 @@ function summarise(plan) {
         title: a.title,
         template: a.template,
         content: 'full',
-        why: 'the requested page - copied with all of its content, without its child pages'
+        why: a.rename
+          ? `the site's home page, backed up as "${nameOf(a.destPath)}" - made from its template, then filled with all of its content, without its child pages`
+          : 'the requested page - copied with all of its content, without its child pages'
       };
     } else if (a.kind === 'update') {
       update = {
@@ -331,6 +337,42 @@ async function copyLeaf(client, report, a) {
   return r;
 }
 
+/**
+ * A copy under another name - a site's home page, backed up as
+ * .../backup/home. AEM's copy keeps the source's name, so the page is made
+ * from the source's own template first, then brought into line with the
+ * source by the same plan an update to a backup uses: every component and
+ * property written, what the template put there and the source does not have
+ * removed, and the whole of it read back.
+ */
+async function copyRenamed(client, settings, report, a) {
+  await createShell(client, report, { destPath: a.destPath, title: a.title, template: a.template });
+  const sync = await buildSyncPlan(
+    client,
+    { ...settings, upsertVersionFirst: false },
+    {
+      source: a.sourcePath,
+      dest: a.destPath,
+      destSite: segs(a.sourcePath)[settings.rootDepth - 1],
+      allowDeletes: true,
+      skipAssets: true
+    }
+  );
+  if (sync.blockers.length) {
+    throw abort(`${a.destPath} was created, but its content could not be written: ${sync.blockers[0]} It is still there, empty.`);
+  }
+  /* The page was made a moment ago from a template: what the template put in
+     it is nobody's content, so emptying it is not a removal to confirm. */
+  sync.removalsAcked = true;
+  try {
+    await executeSync(client, report, sync);
+  } catch (e) {
+    // The page is there, made from the template; this extension never deletes it.
+    throw abort(`${String(e.message).replace(/\.$/, '')}. ${a.destPath} was created from the template first and is still there - run the backup again to fill it.`);
+  }
+  report('ok', `copied  ${a.sourcePath}  ->  ${a.destPath}`);
+}
+
 async function verifyResult(client, settings, report, a) {
   const info = await client.inspect(a.destPath);
   client.assertReadable(info, 'copied page');
@@ -382,7 +424,11 @@ async function execute(client, settings, report, plan) {
         await createShell(client, report, a);
         created.push(a.destPath);
       } else if (a.kind === 'copy') {
-        await copyLeaf(client, report, a);
+        if (a.rename) {
+          await copyRenamed(client, settings, report, a);
+        } else {
+          await copyLeaf(client, report, a);
+        }
         await verifyResult(client, settings, report, a);
       } else if (a.kind === 'update') {
         if (hasChanges(summariseSync(plan.sync))) {

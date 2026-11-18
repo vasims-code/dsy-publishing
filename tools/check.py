@@ -81,6 +81,9 @@ CHANGED_ON_PURPOSE = {
     # A backup that differs is saved as a version before it is overwritten,
     # since it is the only copy; a backup that cannot be checked is shown as
     # unavailable rather than failing the analysis.
+    # Copy a component: buildPlan narrows its two trees to one component when
+    # params.component is set (./component.js), and a `components` action
+    # lists a page's components for the picker. A whole-page plan is unchanged.
     'src/features/page-upsert/worker.js',
     # How long a quiet upload socket is given before it counts as stuck, and
     # how far it got when it is given up on. A sign-in page answered at 200
@@ -102,7 +105,9 @@ CHANGED_ON_PURPOSE = {
     # insideBackupFolder: the one rule the Versions tool already enforced,
     # named once so versioning before a write can follow it too, and the same
     # rule as backupPathFor. A '.', '..' or encoded slash in a path is refused,
-    # so no path is checked as one page and fetched as another.
+    # so no path is checked as one page and fetched as another. A site's home
+    # page backs up to <site>/<folder>/home (HOME_BACKUP); a real page called
+    # "home" right under the site is refused, since it would land on the same.
     'src/core/paths.js',
     # A component is named in the deck the way AEM's editor names it on the
     # page - its own jcr:title from /apps, "FT02_Feature Benefit" - instead of
@@ -121,6 +126,8 @@ CHANGED_ON_PURPOSE = {
     # backupState says 'unavailable' with the reason instead of throwing; the
     # copy is read back for its jcr:content and template; a confirmed removal,
     # or a backup just saved as a version, is passed to the write's guard.
+    # A backup named other than its page (the home page's) is made from the
+    # page's template and filled by the sync plan: AEM's copy cannot rename.
     'src/features/page-copy/worker.js',
     # The Link Fixer: a bare host name, alt or title text and author-console
     # links are not links; only samsung.com and the author instances are

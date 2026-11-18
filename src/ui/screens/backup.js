@@ -30,7 +30,7 @@ import {
 import { logBox, makeLog } from '../log.js';
 import { runAction } from '../run.js';
 import { pathRows, tree } from '../tree.js';
-import { backupPathFor, globalBackupPathFor, isGlobalPage } from '../../core/paths.js';
+import { HOME_BACKUP, backupPathFor, globalBackupPathFor, isGlobalPage } from '../../core/paths.js';
 
 const STEPS = ['Pick', 'Review', 'Run', 'Done'];
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many || one + 's'}`;
@@ -170,9 +170,17 @@ export async function render(ctx) {
     /* Where the backup will go, worked out from the path as it is typed. */
     view.append(label('Goes to'));
     const targetBox = el('div', 'dash-box');
+    const PATH_HINT = 'The source path with the backup folder inserted under the site root. Change the folder in Settings.';
+    const targetHint = el('div', 'field-hint', PATH_HINT);
     let targetOk = false;
     let go = null;
     const showTarget = () => {
+      /* A site's home page has no path under the site root to keep, so it
+         gets a name of its own in the folder (HOME_BACKUP in core/paths.js). */
+      const home = String(own.source || '').split('/').filter(Boolean).length === (state.settings?.rootDepth ?? 3);
+      targetHint.textContent = home
+        ? `This is the site's home page, so it is backed up as "${HOME_BACKUP}" inside the backup folder. Change the folder in Settings.`
+        : PATH_HINT;
       let global = false;
       try {
         global = isGlobalPage(own.source, state.settings?.rootDepth ?? 3);
@@ -196,7 +204,7 @@ export async function render(ctx) {
     targetField.append(
       el('div', 'field-label', 'Backup page'),
       targetBox,
-      el('div', 'field-hint', 'The source path with the backup folder inserted under the site root. Change the folder in Settings.')
+      targetHint
     );
     view.append(targetField);
     showTarget();

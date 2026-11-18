@@ -100,15 +100,30 @@ export function backupPathFor(source, rootDepth, folder) {
 
   if (!f.length) throw new Error('No backup folder is configured. Set one in settings.');
   if (s[0] !== 'content') throw new Error('The source page must be under /content.');
-  if (s.length <= rootDepth) {
-    throw new Error(`The source is at or above the site root (depth ${rootDepth}), so it has no backup location.`);
+  if (s.length < rootDepth) {
+    throw new Error(`The source is above the site root (depth ${rootDepth}), so it has no backup location.`);
   }
+  /* The site's home page has nothing after the site root to put under the
+     folder - its backup would be the backup folder itself, which holds every
+     other backup. So it has a name of its own there. */
+  if (s.length === rootDepth) return '/' + [...s, ...f, HOME_BACKUP].join('/');
   if (atBackupFolder(s, f, rootDepth)) {
     throw new Error(`The source is already inside the backup folder (${f.join('/')}).`);
+  }
+  /* A real page called "home" right under the site root would back up to the
+     same place as the home page, and each would overwrite the other's backup. */
+  if (s.length === rootDepth + 1 && s[rootDepth] === HOME_BACKUP) {
+    throw new Error(
+      `${'/' + s.join('/')} would be backed up at the same place as the site's home page ` +
+        `(${'/' + [...s.slice(0, rootDepth), ...f, HOME_BACKUP].join('/')}), so it has no backup location of its own.`
+    );
   }
 
   return '/' + [...s.slice(0, rootDepth), ...f, ...s.slice(rootDepth)].join('/');
 }
+
+/** The name a site's home page is backed up under, inside the backup folder. */
+export const HOME_BACKUP = 'home';
 
 /** Does the backup folder start right under the site root of these segments? */
 const atBackupFolder = (s, f, rootDepth) => f.every((name, i) => s[rootDepth + i] === name);

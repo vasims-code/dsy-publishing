@@ -809,6 +809,8 @@ await import('./site-code-fixer-test.mjs');
 /* Copy a page's refusals, read-back and page-properties box, on a small
    in-memory AEM of its own - the shapes that once got past them. */
 await import('./engine-test-copy-page.mjs');
+await import('./engine-test-copy-component.mjs');
+await import('./engine-test-home-backup.mjs');
 
 /* Copy deck, export and import: the sheet read back every way it comes back,
    planned, and written by the real import worker to an in-memory AEM. */

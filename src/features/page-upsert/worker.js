@@ -18,6 +18,7 @@
  */
 
 import { abort } from '../../core/aem-client.js';
+import { listComponents, scopeToComponent } from './component.js';
 import { backupState, takeBackup } from '../page-copy/worker.js';
 import { findOnDelivery, missingReason } from '../../core/dynamic-media.js';
 import {
@@ -313,7 +314,11 @@ export async function buildPlan(client, settings, params) {
 
   if (!/^\/content\//.test(source)) throw abort(`Source must be under /content: ${source}`);
   if (!/^\/content\//.test(dest)) throw abort(`Destination must be under /content: ${dest}`);
-  if (source === dest) throw abort('Source and destination are the same path.');
+  /* One component instead of the whole page: { from, before | into }. The
+     plan is the page plan, narrowed (see ./component.js). A component can be
+     copied within one page too - it arrives as a new node beside the rest. */
+  const component = params.component && typeof params.component === 'object' ? params.component : null;
+  if (source === dest && !component) throw abort('Source and destination are the same path.');
   if (segs(dest).length <= settings.rootDepth) {
     throw abort(`Destination is at or above the site root (depth ${settings.rootDepth}). Refusing.`);
   }
@@ -333,6 +338,9 @@ export async function buildPlan(client, settings, params) {
   if (destState === 'error') throw abort(`Could not reach the destination at ${dest}.`);
 
   const mode = destState === 'yes' ? 'sync' : 'create';
+  if (component && mode !== 'sync') {
+    throw abort(`The destination page is not there: ${dest}. A component is copied into a page that already exists - copy the whole page to create it.`);
+  }
 
   if (mode === 'create') {
     if (nameOf(source) !== nameOf(dest)) {
@@ -351,8 +359,24 @@ export async function buildPlan(client, settings, params) {
     }
   }
 
-  const src = await readPageTree(client, source);
+  let src = await readPageTree(client, source);
   if (!src) throw abort(`Source page has no jcr:content: ${source}`);
+
+  /* Copying one component: the source becomes that component alone, already
+     at its new place on the destination, and the destination is the page as
+     it is. Nothing on the destination is removed - the component is added. */
+  let scoped = null;
+  if (component) {
+    const whole = await readPageTree(client, dest);
+    if (!whole) throw abort(`Destination exists but has no jcr:content: ${dest}. Nothing to copy into.`);
+    try {
+      scoped = scopeToComponent({ src, dest: whole, from: component.from, before: component.before || null, into: component.into || null });
+    } catch (e) {
+      throw abort(e.message);
+    }
+    src = scoped.src;
+    opts.deleteExtras = false;
+  }
   const srcRels = Object.keys(src.tree);
 
   // A short source tree makes every node missing from it look deleted.
@@ -448,7 +472,7 @@ export async function buildPlan(client, settings, params) {
   ctx.kept = (ref) =>
     ref.startsWith(sites.srcDam) || isAssetRef(ref) ? keep.images : keep.links && rewriteValue(ref, full) !== ref;
 
-  const destTree = mode === 'sync' ? await readPageTree(client, dest) : null;
+  const destTree = mode === 'sync' ? scoped?.dest || (await readPageTree(client, dest)) : null;
   if (mode === 'sync' && !destTree) {
     throw abort(`Destination exists but has no jcr:content: ${dest}. Nothing to sync into.`);
   }
@@ -476,6 +500,9 @@ export async function buildPlan(client, settings, params) {
     missingAssets: missing,
     assetRe: re
   });
+  /* Every node of a copied component is new, and each is created at its
+     place with :order - there is nothing already there to put in order. */
+  if (scoped) d.reorders = [];
 
   /* A page created here is a copy of the source, and copyPage brings the
      source locale's own publish date and localContent flag with it. Taken
@@ -516,7 +543,8 @@ export async function buildPlan(client, settings, params) {
 
   return {
     source, dest, mode, sites, ctx, opts, assets, folders, ...d,
-    blockers, largeRemoval, truncationRisk, choice, otherSites, otherDam, site
+    blockers, largeRemoval, truncationRisk, choice, otherSites, otherDam, site,
+    component: scoped?.info || null
   };
 }
 
@@ -570,6 +598,8 @@ export function summarise(plan) {
 
   const s = {
     mode: plan.mode,
+    // One component copied rather than the page: where it came from and where it goes.
+    component: plan.component || null,
     source: plan.source,
     dest: plan.dest,
     rewrite: {
@@ -1032,7 +1062,47 @@ export async function backupFirst(client, settings, report, page, params) {
   }
 }
 
+/** Each component's name as the editor shows it - the jcr:title of its definition. */
+async function componentTitles(client, types) {
+  const titles = {};
+  for (const rt of types) {
+    if (!rt || rt.startsWith('/')) continue;
+    for (const root of ['/apps', '/libs']) {
+      const props = await client.readProps(`${root}/${rt}`).catch(() => null);
+      if (props?.['jcr:title']) {
+        titles[rt] = String(props['jcr:title']);
+        break;
+      }
+    }
+  }
+  return titles;
+}
+
 export const actions = {
+  /**
+   * Reads only. The components of the source and destination pages, in page
+   * order, for choosing which one to copy and where it goes.
+   */
+  async components({ client, params }) {
+    client.resetCaches();
+    const read = async (path, what) => {
+      const page = norm(path);
+      if (!/^\/content\//.test(page)) throw abort(`The ${what} page must be under /content: ${page}`);
+      const info = await client.inspect(page);
+      client.assertReadable(info, `${what} page`);
+      if (!info.exists) throw abort(`The ${what} page does not exist: ${page}`);
+      if (!info.isPage) throw abort(`The ${what} is not a cq:Page (it is ${info.primaryType}): ${page}`);
+      const t = await readPageTree(client, page);
+      if (!t) throw abort(`The ${what} page has no jcr:content: ${page}`);
+      return { page, title: info.title || null, components: listComponents(t) };
+    };
+    const source = await read(params.source, 'source');
+    const dest = await read(params.dest, 'destination');
+    const titles = await componentTitles(client, new Set([...source.components, ...dest.components].map((c) => c.resourceType)));
+    for (const c of [...source.components, ...dest.components]) c.title = titles[c.resourceType] || null;
+    return { source, dest };
+  },
+
   /** Reads only. Produces the breakdown the operator approves or rejects. */
   async analyze({ client, settings, report, params }) {
     client.resetCaches();
@@ -1055,7 +1125,9 @@ export const actions = {
       if (s.largeRemoval) report('warn', `${s.largeRemoval} It runs only once you confirm the removal.`);
       report(
         'info',
-        `${s.mode === 'create' ? 'Will create' : 'Will update'} ${plan.dest}. Nothing has been written.`
+        s.component
+          ? `Will add ${s.component.name} to ${plan.dest}, from ${s.component.from} on ${plan.source}. Nothing has been written.`
+          : `${s.mode === 'create' ? 'Will create' : 'Will update'} ${plan.dest}. Nothing has been written.`
       );
     }
     return s;

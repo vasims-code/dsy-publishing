@@ -105,14 +105,15 @@ tools/                 build-zip.py, check.py. Not shipped.
 | `screens/*.js` | one file per tool |
 | `options.html` / `options.js` | the settings page |
 
-### Six tools over ten features
+### Seven tools over eleven features
 
 `tools.js` is where that mapping lives. Three tools ask one more question
-before they start, so the home screen stays six rows long:
+before they start, so the home screen stays seven rows long:
 
 | Tool | Features | The extra question |
 |---|---|---|
 | Copy a page | `page-upsert`, `page-transfer` | This server, or another one |
+| Copy a component | `component-copy` | |
 | Backup | `page-copy` | |
 | Copy deck | `copy-deck`, `copy-deck-import` | Export, or import |
 | Links | `broken-links`, `link-fixer`, `site-code-fixer` | Which of the three |
@@ -133,64 +134,31 @@ when AEM has a page at `/content/<brand>/<code>`, and each corrected link's page
 is looked up first: one this site does not have is flagged and left unticked.
 Page properties (canonical, hreflang) are not scanned.
 
-### How a screen talks to AEM
+### Copy a component
 
-The panel sends one command to the content script in the AEM tab and waits for
-one result. Progress cannot ride on that result - it only exists once the work
-is done - so it comes back as separate messages tagged with the run id
-(`src/core/protocol.js`).
+Its own row on the home screen and its own feature, `component-copy`: one
+component copied from a source page into a destination page that already
+exists, above a component the author picks there (or at the end of a
+container). This server only - between servers a page goes through the
+two-tab transfer, which copies pages.
 
-`page-transfer` is the exception, and the only reason `transfer.js` exists: a
-transfer needs two tabs, because the source is read inside its own origin where
-its session cookie is, and the destination is written inside its own. Neither
-can reach the other. So the panel drives six actions in turn - `readPage`,
-`analyze`, `prepare`, then each image `readAsset` → `writeAsset` piece by
-piece, then `apply`.
+It is not a second copier. `component-copy`'s worker hands every action to
+`page-upsert`, refusing any that does not name a component, and `buildPlan`
+narrows its two trees with `src/features/page-upsert/component.js`: the
+source becomes that component alone, already at its new place; the
+destination is the page as it is. The rest of the plan is the page plan, so a
+component gets exactly what a page gets - links and image references
+re-pointed between sites (nothing rewritten on the same site), images the
+destination's DAM lacks uploaded, the lock check, one write, and the
+read-back. Removals are off: nothing on the destination is changed or removed,
+and a name already taken there gets the next free one (`_copy`, `_copy_2`)
+rather than overwriting it. The new node is placed with Sling's `:order`, so
+its siblings do not move.
 
-### What the workers refuse to write without
-
-These are not formalities. `page-upsert`, `page-transfer` and `page-copy`
-check what the review *showed*, not just that you said yes:
-
-- **`removalsAck`** `{ nodes, props, fingerprint }` - the fingerprint is a hash
-  of exactly which components and properties would go. A page that changed
-  between the review and the click is refused.
-- **`metadataAck`** `{ props: [...] }` - every page property that would change
-  on a destination that already exists.
-
-A screen that does not send these gets a refusal, not a silent skip. Both reset
-when a fresh analysis replaces the plan they were given for.
-
----
-
-## Rules this UI holds to
-
-Learned by getting them wrong first.
-
-1. **A button says what pressing it does.** Not where it goes. "Continue with
-   12 links", not "Review 12 changes" on a screen called Review; "Restore
-   version 3", not "Restore selected version"; "Already on version 4",
-   disabled, when the page already holds it.
-2. **The Done screen is only ever reached by a write that actually ran.**
-   Nothing found, nothing to change, refused before starting - all stay on the
-   step where they were discovered. A green "Done" after a read is a lie.
-3. **Blue means "next step", amber means "this writes".** One amber button per
-   flow, and it is the only one that changes anything.
-4. **A read never says it writes.** The footer tag is "Preview only" until the
-   confirm step.
-5. **The shell owns a tool's state** (`toolState` in `panel.js`) and forgets it
-   when you leave. On the module, a tool reopened later came back on its old
-   step holding data read before a restore.
-6. **Clear and draw in the same turn.** `render()` keeps loaded screen modules
-   so a redraw never clears the view and then awaits.
-7. **A change of step goes back to the top** (`toTop()` in `parts.js`), never a
-   redraw. You leave a step by a button at the bottom; without this the next
-   step arrives scrolled past, often to empty space.
-8. **Say which it is, not what the setting is called.** The restore warning
-   reads the setting and says what will happen, rather than naming a tick box
-   and leaving you to work it out.
-
----
+The screen is Copy a page's, drawn in its component form
+(`screens/copy-component.js` passes `componentOnly`), so the review, the
+confirmation and the result are the same ones. `tools/engine-test-copy-component.mjs`
+runs the real workers against an in-memory AEM.
 
 ## Deliberate engine change
 
@@ -335,6 +303,17 @@ backup you can reach and look at the page afterwards.
 **A backup is not always possible.** `backupPathFor` refuses a page that is
 already inside the backup folder, which is how the 1 November run wrote with no
 backup at all. That used to pass in silence; `backupFirst` now says so.
+
+**A site's home page backs up as `home`.** `/content/samsung/levant_ar` has
+nothing after the site root to put under the folder, so its backup would have
+been the backup folder itself - the page holding every other backup. It goes
+to `/content/samsung/levant_ar/india/backup/home` instead (`HOME_BACKUP` in
+`core/paths.js`). AEM's copy cannot rename, so that backup is made from the
+home page's own template and then filled by the same sync plan an update
+uses (`copyRenamed` in `page-copy/worker.js`), removals of what the template
+put there included; every other backup is still an AEM copy. A real page
+called `home` right under the site root is refused a backup, since it would
+land on the same place. `tools/engine-test-home-backup.mjs` runs it.
 
 **The activity log.** Every line a worker reports - what it read, wrote or
 skipped - is kept by `src/ui/log.js` and shown under the run, folded away when
