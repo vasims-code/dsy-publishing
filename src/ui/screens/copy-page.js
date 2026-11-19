@@ -1191,6 +1191,11 @@ export async function render(ctx) {
             tabId: state.tab?.id,
             onReport
           });
+      /* A tab that answered with nothing - an old extension still loaded there,
+         say - is said in words, not as a null read further down. */
+      if (!parts?.source?.components || !parts?.dest?.components) {
+        throw new Error('The AEM tab did not list the components. Reload the AEM tab, then press Choose the component again.');
+      }
       own.parts = parts;
       own.partsFor = partsKey();
       // A choice from lists read for other pages means nothing on these.

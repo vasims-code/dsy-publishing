@@ -992,6 +992,18 @@ test('Copy a component · from another server: each server lists its own page, a
   }
 });
 
+test('Copy a component · a tab that lists nothing is said in words, not as a null read', async () => {
+  const mod = await import('/src/ui/screens/copy-component.js');
+  H.tab.reply = async () => ({ ok: true, result: null });
+  const ctx = await mount(mod, { state: { page: { path: '/content/samsung/uk/a', title: 'A' } } });
+  H.setValue(H.input(ctx, 'Destination page'), '/content/samsung/lb/a');
+  await H.settle(20);
+  H.btn(ctx, 'Choose the component').click();
+  await H.until(() => H.shown(ctx).includes('That did not work'));
+  has(ctx, 'did not list the components', 'the reason is plain');
+  hasNot(ctx, 'Cannot read properties', 'no script error reaches the screen');
+});
+
 test('Copy a page · copies whole pages only: the component tool is its own', async () => {
   const mod = await import('/src/ui/screens/copy-page.js');
   const ctx = await mount(mod);
