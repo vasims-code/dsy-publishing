@@ -76,6 +76,9 @@ CHANGED_ON_PURPOSE = {
     # Plus: removal rule by components emptied, not a share; a page the run
     # just created is not checked for removals; locale-owned properties kept
     # at the destination; a signed-out session stops the run.
+    # Copy a component from another server: readPage carries only the
+    # component, analyze and apply place it with page-upsert's component.js
+    # and skip pairing, and `components` lists one page for the pickers.
     'src/features/page-transfer/worker.js',
     # A backup that cannot be taken is said out loud, not passed in silence.
     # A backup that differs is saved as a version before it is overwritten,

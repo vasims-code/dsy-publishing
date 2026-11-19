@@ -161,13 +161,13 @@ export async function render(ctx) {
     dam.value = own.damFolder;
     dam.spellcheck = false;
     dam.setAttribute('aria-label', 'This site’s DAM folder');
-    dam.placeholder = 'Same as the site code';
+    dam.placeholder = 'Folder name only, e.g. ae';
     dam.addEventListener('input', () => {
       own.damFolder = dam.value.trim();
     });
     damField.append(dam);
     damField.append(
-      el('div', 'field-hint', 'Leave it empty unless the site keeps its images under another name - /ae for an /ae_ar page, say.')
+      el('div', 'field-hint', 'Leave it empty to use the site code. Fill it in only when the images are in a folder with another name: for an ae_ar page whose images are in /content/dam/samsung/ae, type ae.')
     );
     view.append(damField);
 

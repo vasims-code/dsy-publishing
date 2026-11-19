@@ -155,8 +155,7 @@ property changes.
 Its own row on the home screen and its own feature, `component-copy`: one
 component copied from a source page into a destination page that already
 exists, above a component the author picks there (or at the end of a
-container). This server only - between servers a page goes through the
-two-tab transfer, which copies pages.
+container) - on this server, or from another one.
 
 It is not a second copier. `component-copy`'s worker hands every action to
 `page-upsert`, refusing any that does not name a component, and `buildPlan`
@@ -175,6 +174,15 @@ The screen is Copy a page's, drawn in its component form
 (`screens/copy-component.js` passes `componentOnly`), so the review, the
 confirmation and the result are the same ones. `tools/engine-test-copy-component.mjs`
 runs the real workers against an in-memory AEM.
+
+**From another server** the component goes through the two-tab transfer
+(`ui/transfer.js`, `page-transfer`), narrowed at both ends with the same
+`component.js`. Each tab lists its own page's components for the pickers
+(`components`); the source tab reads and carries only the component and its
+images (`readPage` with `component`); the destination plans against its page
+as it is, with no pairing (`scopedPlan`): every node of the component is new,
+placed with `:order`, removals off. The destination page must already exist
+on that server. The engine test drives it between two in-memory servers.
 
 ## Deliberate engine change
 

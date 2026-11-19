@@ -887,12 +887,18 @@ test('Copy a component · choose it, place it, review, copy', async () => {
 
   await H.until(() => H.btn(ctx, 'Choose the component'));
   hasNot(ctx, 'Remove components that no longer exist', 'the whole-page removal box is not offered');
-  expect(!H.btn(ctx, 'Another server'), 'there is no server to choose: a component is copied on this server');
+  expect(H.btn(ctx, 'This server')?.getAttribute('aria-pressed') === 'true', 'it starts on this server');
   H.setValue(H.input(ctx, 'Destination page'), '/content/samsung/lb/a');
   await H.settle(20);
-  expect(H.btn(ctx, 'Analyze').disabled, 'nothing to analyze before a component is chosen');
+  /* Before the components are read, the footer's own button reads them - it is
+     the one H.btn finds first - rather than standing there as a greyed-out Analyze. */
+  const footerBtn = ctx.footer.querySelector('button');
+  expect(/Choose the component/.test(footerBtn.textContent) && !footerBtn.disabled, `the footer offers to read the components: ${footerBtn.textContent}`);
+  expect(!H.btn(ctx, 'Analyze'), 'Analyze is not offered before there is a component to analyze');
+  const same = [...ctx.view.querySelectorAll('button'), ...ctx.footer.querySelectorAll('button')].filter((b) => /Choose the component/.test(b.textContent));
+  expect(same.length === 1, `one button reads the components, not ${same.length}`);
 
-  H.btn(ctx, 'Choose the component').click();
+  footerBtn.click();
   await H.until(() => ctx.view.querySelector('select[aria-label="Component to copy"]'));
   const pick = (aria, value) => {
     const sel = ctx.view.querySelector(`select[aria-label="${aria}"]`);
@@ -900,6 +906,7 @@ test('Copy a component · choose it, place it, review, copy', async () => {
     sel.dispatchEvent(new Event('change', { bubbles: true }));
   };
   has(ctx, 'FT02_Feature Benefit · What is Mini LED?', 'components are named as the editor names them, with their headline');
+  expect(H.btn(ctx, 'Analyze')?.disabled, 'once read, the footer is Analyze, waiting for a pick');
   pick('Component to copy', '/root/responsivegrid/feature');
   expect(H.btn(ctx, 'Analyze').disabled, 'nor before where it goes');
   pick('Put it above', 'before:/root/responsivegrid/text_1');
@@ -923,6 +930,66 @@ test('Copy a component · choose it, place it, review, copy', async () => {
   expect(run.params.component?.from === '/root/responsivegrid/feature', 'the write carries the component');
   await H.until(() => H.shown(ctx).includes('Component copied'));
   has(ctx, 'Nothing else on the page was changed', 'the done step says what it did');
+});
+
+test('Copy a component · from another server: each server lists its own page, and the copy goes through the transfer', async () => {
+  const mod = await import('/src/ui/screens/copy-component.js');
+  const AP = 'https://p6-ap-author.samsung.com';
+  const EU = 'https://p6-eu-author.samsung.com';
+  /* The two servers' tabs: this one (1) on AP, and one (2) on EU. */
+  const realQuery = chrome.tabs.query;
+  chrome.tabs.query = async (q) =>
+    q?.url?.startsWith(EU) ? [{ id: 2, url: `${EU}/`, title: 'eu' }] : [{ id: 1, url: `${AP}/editor.html/content/samsung/uk/a.html`, title: 'A' }];
+  try {
+    H.tab.sent = [];
+    H.tab.reply = async (m, tabId) => {
+      if (m.feature !== 'page-transfer') return { ok: false, error: `asked ${m.feature}, not the transfer` };
+      if (m.action === 'components') return { ok: true, result: tabId === 1 ? PARTS().source : PARTS().dest };
+      if (m.action === 'readPage') return { ok: true, result: { source: '/content/samsung/uk/a', tree: {}, order: {}, assets: [] } };
+      if (m.action === 'analyze') return { ok: true, result: CP({ component: COMPONENT }) };
+      return { ok: true, result: null };
+    };
+    const ctx = await mount(mod, {
+      state: { page: { path: '/content/samsung/uk/a', title: 'A' }, origin: AP, settings: { origins: [AP, EU], rootDepth: 3, backupFolder: 'india/backup' } }
+    });
+    H.btn(ctx, 'Another server').click();
+    await H.until(() => ctx.view.querySelector('select[aria-label="Destination server"]'));
+    has(ctx, 'It must already exist on that server', 'the destination page must be there already');
+    const dst = ctx.view.querySelector('select[aria-label="Destination server"]');
+    dst.value = EU;
+    dst.dispatchEvent(new Event('change', { bubbles: true }));
+    await H.settle(20);
+    H.setValue(H.input(ctx, 'Destination page'), '/content/samsung/lb/a');
+    await H.settle(20);
+
+    H.btn(ctx, 'Choose the component').click();
+    await H.until(() => ctx.view.querySelector('select[aria-label="Component to copy"]'));
+    const lists = H.tab.sent.filter((m) => m.action === 'components');
+    expect(
+      lists.length === 2 && lists.find((m) => m.tabId === 1)?.params.page === '/content/samsung/uk/a' && lists.find((m) => m.tabId === 2)?.params.page === '/content/samsung/lb/a',
+      `each server is asked for its own page: ${JSON.stringify(lists.map((m) => [m.tabId, m.params.page]))}`
+    );
+    has(ctx, 'FT02_Feature Benefit · What is Mini LED?', 'the source server’s components are listed');
+    const pick = (aria, value) => {
+      const sel = ctx.view.querySelector(`select[aria-label="${aria}"]`);
+      sel.value = value;
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    pick('Component to copy', '/root/responsivegrid/feature');
+    pick('Put it above', 'before:/root/responsivegrid/text_1');
+    H.btn(ctx, 'Analyze').click();
+    await H.until(() => H.shown(ctx).includes('Goes'));
+    const read = H.tab.sent.find((m) => m.action === 'readPage');
+    expect(read?.tabId === 1 && read.params.component?.from === '/root/responsivegrid/feature', 'the source server reads only the component');
+    const analyze = H.tab.sent.find((m) => m.action === 'analyze');
+    expect(
+      analyze?.tabId === 2 && analyze.params.component?.before === '/root/responsivegrid/text_1',
+      `the destination server plans it, with its place: ${JSON.stringify(analyze?.params.component)}`
+    );
+    has(ctx, 'above Text Block · Second', 'the review says where it goes');
+  } finally {
+    chrome.tabs.query = realQuery;
+  }
 });
 
 test('Copy a page · copies whole pages only: the component tool is its own', async () => {

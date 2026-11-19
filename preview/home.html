@@ -264,6 +264,17 @@
       chrome.tabs.sendMessage = async (tabId, msg) => {
         if (msg?.type === 'aemt:session') return { state: 'in', user: 'vshaik' };
         if (msg?.type === 'aemt:release') return { ok: true };
+        /* Copy a component's pickers: page-upsert/component-copy reads both
+           pages on one server; page-transfer is asked once per server. */
+        if (msg?.action === 'components') {
+          await new Promise((r) => setTimeout(r, 500));
+          const grid = { rel: '/root/responsivegrid', name: 'responsivegrid', resourceType: 'wcm/foundation/components/responsivegrid', type: 'responsivegrid', headline: null, depth: 0, container: true, title: 'Layout Container' };
+          const c = (name, type, title, headline) => ({ rel: `/root/responsivegrid/${name}`, name, resourceType: `samsung/components/content/${type}`, type, headline, depth: 1, container: false, title });
+          const source = { page: msg.params.source || msg.params.page, title: 'Source', components: [grid, c('cm_g_static_content', 'cm-g-static-content', 'RC01_Static Content', 'Practice mindfulness for sound body'), c('feature', 'cm-g-feature-benefit', 'FT02_Feature Benefit', 'What is Mini LED?')] };
+          const dest = { page: msg.params.dest || msg.params.page, title: 'Destination', components: [grid, c('text_0', 'cm-g-text', 'Text Block', 'First'), c('text_1', 'cm-g-text', 'Text Block', 'Second')] };
+          if (msg.feature === 'page-transfer') return { ok: true, result: msg.params.what === 'destination' ? dest : source };
+          return { ok: true, result: { source, dest } };
+        }
         /* The Image Site Code Fixer: the samsung-health static content, copied from /lb. */
         if (msg?.feature === 'image-site-fixer' && msg.action === 'scan') {
           await new Promise((r) => setTimeout(r, 600));

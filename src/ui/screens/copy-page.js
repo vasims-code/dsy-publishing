@@ -105,13 +105,11 @@ export async function render(ctx) {
 
   if (own.source == null) own.source = state.page?.path || '';
 
-  /* Drawn for Copy a component: one component, on this server. Between
-     servers a page goes through the two-tab transfer, which copies pages. */
+  /* Drawn for Copy a component: one component, from this server or another.
+     Between servers it goes through the same two-tab transfer as a page,
+     narrowed to the component at both ends (features/page-transfer). */
   const componentOnly = ctx.componentOnly === true;
-  if (componentOnly) {
-    own.what = 'component';
-    own.where = 'this';
-  }
+  if (componentOnly) own.what = 'component';
   /* Each tool asks its own feature: the plan is the same, but a component
      copy refuses to run without a component (features/component-copy). */
   const FEATURE = componentOnly ? 'component-copy' : 'page-upsert';
@@ -174,8 +172,7 @@ export async function render(ctx) {
       });
       seg.append(b);
     }
-    // A component is copied on this server only, so there is nothing to ask.
-    if (!componentOnly) view.append(seg);
+    view.append(seg);
 
     const origins = state.settings?.origins || [];
 
@@ -186,8 +183,8 @@ export async function render(ctx) {
     let footerNote = null;
     const component = componentOnly;
     const pathsReady = () => own.source.startsWith('/content/') && own.dest.startsWith('/content/');
-    /* The component lists belong to the two paths they were read for. */
-    const partsFresh = () => !!own.parts && own.partsFor === `${own.source}|${own.dest}`;
+    /* The component lists belong to the two paths - and servers - they were read for. */
+    const partsFresh = () => !!own.parts && own.partsFor === partsKey();
     const isReady = () => pathsReady() && (!component || (partsFresh() && !!own.compFrom && !!own.compPlace));
     const readyNote = () =>
       !pathsReady()
@@ -195,15 +192,22 @@ export async function render(ctx) {
         : !component
           ? '1 page'
           : !partsFresh()
-            ? 'Choose the component'
+            ? 'Reads both pages first'
             : !own.compFrom
               ? 'Pick a component'
               : !own.compPlace
                 ? 'Pick where it goes'
                 : '1 component';
     let chooseBtn = null;
+    /* Before the components are read, the footer's button reads them: the
+       picker's own button sits below the form, out of sight, and a greyed-out
+       Analyze said nothing about why. Once they are read it is Analyze. */
+    const footerReads = () => component && !partsFresh();
     const syncReady = () => {
-      if (analyzeBtn) analyzeBtn.disabled = !isReady();
+      if (analyzeBtn) {
+        analyzeBtn.disabled = footerReads() ? !pathsReady() : !isReady();
+        analyzeBtn.lastElementChild.textContent = footerReads() ? 'Choose the component' : 'Analyze';
+      }
       if (footerNote) footerNote.textContent = readyNote();
       if (chooseBtn) chooseBtn.disabled = !pathsReady();
     };
@@ -246,10 +250,12 @@ export async function render(ctx) {
     const destField = pathField('Destination page', own.dest, '/content/samsung/lb/offers/spring-sale', (v) => {
       own.dest = v;
       syncReady();
-    }, another
-      ? 'Created if it is not there yet.'
-      : component
-        ? 'The page the component is added to. It must already exist.'
+    }, component
+      ? another
+        ? 'The page the component is added to. It must already exist on that server.'
+        : 'The page the component is added to. It must already exist.'
+      : another
+        ? 'Created if it is not there yet.'
         : 'Created if it is not there yet. Its parent must already exist.');
 
     /* The same page usually sits at the same path on both servers, so offer
@@ -279,13 +285,16 @@ export async function render(ctx) {
     if (component) {
       view.append(label('The component'));
       const card = el('div', 'field-card');
-      chooseBtn = button(partsFresh() ? 'Read both pages again' : 'Choose the component', 'ghost', doComponents, {
-        disabled: !pathsReady(),
-        iconName: 'search'
-      });
-      card.append(chooseBtn);
+      /* Before the pages are read, the footer's button is the one way to read
+         them - two buttons with one label read as two different things. Once
+         they are read, reading them again is the card's own. */
       if (partsFresh()) {
+        chooseBtn = button('Read both pages again', 'ghost', doComponents, {
+          disabled: !pathsReady(),
+          iconName: 'search'
+        });
         card.append(
+          chooseBtn,
           pickField('Component to copy', own.compFrom, componentOptions(own.parts.source.components), (v) => {
             own.compFrom = v;
             syncReady();
@@ -296,7 +305,15 @@ export async function render(ctx) {
           }, `On ${own.parts.dest.page}. Nothing already on the page is changed or removed.`)
         );
       } else {
-        card.append(el('div', 'field-hint', 'Reads both pages and lists their components. Nothing is written.'));
+        card.append(
+          el(
+            'div',
+            'field-hint',
+            another
+              ? 'Press Choose the component below. It reads both pages, each on its own server, and lists their components here. Nothing is written.'
+              : 'Press Choose the component below. It reads both pages and lists their components here. Nothing is written.'
+          )
+        );
       }
       view.append(card);
     }
@@ -348,6 +365,7 @@ export async function render(ctx) {
           ['copy', 'The component is added to the destination page above the one you pick, with everything inside it.'],
           ['history', 'If the destination already has a component with that name, the copy gets a new name - nothing is overwritten.'],
           ['link', 'Between two sites, its links and image references are re-pointed to the destination site, and images its DAM lacks are uploaded. On the same site it is copied as it is.'],
+          ...(another ? [['transfer', 'From another server, only the component and its images are carried across. Both servers need a tab open, or one is opened for you.']] : []),
           ['deck', 'Nothing else on the destination page changes: not its other components, not its page properties.']
         ])
       );
@@ -362,7 +380,9 @@ export async function render(ctx) {
       ])
     );
 
-    analyzeBtn = button('Analyze', 'primary', doAnalyze, { disabled: !isReady() });
+    analyzeBtn = button(footerReads() ? 'Choose the component' : 'Analyze', 'primary', () => (footerReads() ? doComponents() : doAnalyze()), {
+      disabled: footerReads() ? !pathsReady() : !isReady()
+    });
     footer.append(
       ...footerBar({
         tag: { kind: 'read', text: 'Read-only' },
@@ -1142,6 +1162,11 @@ export async function render(ctx) {
     redraw();
   }
 
+  /** What the component lists were read for: the two paths, and the two servers when they differ. */
+  function partsKey() {
+    return another ? `${own.source}|${own.dest}|${own.sourceOrigin}|${own.destOrigin}` : `${own.source}|${own.dest}`;
+  }
+
   /** Reads both pages' components for the two pickers. Reads only. */
   async function doComponents() {
     own.problem = null;
@@ -1150,16 +1175,24 @@ export async function render(ctx) {
     own.steps = [{ name: 'Reading both pages', state: 'running' }];
     goStep('running');
     try {
-      const parts = await runAction({
-        featureId: FEATURE,
-        action: 'components',
-        params: { source: own.source, dest: own.dest },
-        settings: state.settings,
-        tabId: state.tab?.id,
-        onReport: (msg) => own.log.onReport(msg)
-      });
+      const onReport = (msg) => own.log.onReport(msg);
+      /* Between servers each tab reads its own page: neither can read the other. */
+      const parts = another
+        ? await transfer.components({
+            params: { source: own.source, dest: own.dest, sourceOrigin: own.sourceOrigin, destOrigin: own.destOrigin },
+            settings: state.settings,
+            onReport
+          })
+        : await runAction({
+            featureId: FEATURE,
+            action: 'components',
+            params: { source: own.source, dest: own.dest },
+            settings: state.settings,
+            tabId: state.tab?.id,
+            onReport
+          });
       own.parts = parts;
-      own.partsFor = `${own.source}|${own.dest}`;
+      own.partsFor = partsKey();
       // A choice from lists read for other pages means nothing on these.
       if (!parts.source.components.some((c) => c.rel === own.compFrom)) own.compFrom = '';
       if (!placeOptions(parts.dest.components).some((o) => o.value === own.compPlace)) own.compPlace = '';

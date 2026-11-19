@@ -102,6 +102,9 @@ function client(repo, log = []) {
       (repo.dam ||= []).push(path);
       return ok;
     },
+    async assetSize() {
+      return 3;
+    },
     async readBytes(path, opts = {}) {
       log.push({ kind: 'read', path, url: opts.url || null });
       return { bytes: new Uint8Array([1, 2, 3]), mime: 'image/jpeg', size: 3 };
@@ -394,5 +397,110 @@ for (const [name, component] of [['no component', undefined], ['a component and 
     return JSON.stringify(repo.pages) === before ? null : 'something was written';
   });
 }
+
+/* ------------------------------------------------ from another server */
+
+/* The cross-server copy (page-transfer), driven the way ui/transfer.js drives
+   it: the source page read on its own server, the plan and the write on the
+   other, each image carried between them piece by piece. Two repositories,
+   so nothing can be read across by accident. */
+const T = await import('../src/features/page-transfer/worker.js');
+
+async function transferCopy(srcRepo, dstRepo, params) {
+  const log = [];
+  const srcClient = client(srcRepo, log);
+  const dstClient = client(dstRepo, log);
+  const report = () => {};
+  const settings = { ...SETTINGS, transferPreserve: '', transferCopyAssets: true, transferOverwriteAssets: false };
+  const base = { sourceOrigin: 'https://src.example', destOrigin: 'https://dst.example', backupFirst: false, ...params };
+  const components = {
+    source: await T.actions.components({ client: srcClient, params: { page: base.source } }),
+    dest: await T.actions.components({ client: dstClient, params: { page: base.dest, what: 'destination' } })
+  };
+  const sourcePage = await T.actions.readPage({ client: srcClient, settings, report, params: base });
+  const review = await T.actions.analyze({ client: dstClient, settings, report, params: { ...base, sourcePage } });
+  if (review.blockers.length) throw new Error(review.blockers[0]);
+  const prepared = await T.actions.prepare({ client: dstClient, settings, report, params: { ...base, sourcePage, folders: review.folders } });
+  for (const u of review.uploads) {
+    const piece = await T.actions.readAsset({ client: srcClient, settings, report, params: { path: u.from, url: u.via || null, offset: 0 } });
+    if (piece.skipped) throw new Error(`skipped ${u.from}: ${piece.skipped}`);
+    await T.actions.writeAsset({
+      client: dstClient,
+      report,
+      params: { to: u.to, base64: piece.base64, mime: piece.mime, offset: 0, done: piece.done, size: piece.size, index: 1, total: 1 }
+    });
+  }
+  const result = await T.actions.apply({
+    client: dstClient,
+    settings,
+    report,
+    params: { ...base, sourcePage, pageCreated: prepared?.created === true, backupFirst: false }
+  });
+  return { components, sourcePage, review, result, log };
+}
+
+/* The two servers: the source page on one, the destination page on the other. */
+function twoServers() {
+  const one = repoOf();
+  const srcRepo = { pages: { [SRC]: one.pages[SRC], '/content/samsung/uk': page({}) }, dam: one.dam.filter((d) => d.includes('/uk/')) };
+  const dstRepo = { pages: { [DST]: one.pages[DST], '/content/samsung/levant': page({}) }, dam: ['/content/dam/samsung/levant'] };
+  return { srcRepo, dstRepo };
+}
+
+await check('from another server: added above the chosen component, links and images re-pointed, images carried', async () => {
+  const { srcRepo, dstRepo } = twoServers();
+  const before = structuredClone(dstRepo.pages[DST]);
+  const srcBefore = JSON.stringify(srcRepo);
+  const { components, sourcePage, review, log } = await transferCopy(srcRepo, dstRepo, {
+    source: SRC, dest: DST, component: { from: FROM, before: '/root/responsivegrid/text_1' }
+  });
+  if (components.source.components.map((c) => c.name).join(',') !== 'responsivegrid,intro,feature') return `source list ${components.source.components.map((c) => c.name)}`;
+  if (components.dest.components.map((c) => c.name).join(',') !== 'responsivegrid,text_0,text_1') return 'destination list';
+  // Only the component crosses: its nodes and its images, not the page's.
+  if (Object.keys(sourcePage.tree).some((r) => !r.startsWith(FROM))) return `carried more than the component: ${Object.keys(sourcePage.tree)}`;
+  if (sourcePage.assets.length !== 2) return `carried ${sourcePage.assets.length} images`;
+  const dst = dstRepo.pages[DST];
+  const got = dst.root.responsivegrid.feature;
+  if (!got) return `no feature on the destination: ${kids(dst).join(', ')}`;
+  if (kids(dst).join(',') !== 'text_0,feature,text_1') return `order is ${kids(dst).join(',')}`;
+  if (got.ctaUrl !== '/levant/tvs/all-tvs/') return `ctaUrl ${got.ctaUrl}`;
+  if (got.desktopImageRef !== '/content/dam/samsung/levant/tvs/hero-pc.jpg') return `image ${got.desktopImageRef}`;
+  if (got.carousel1?.imageMobileImageRef !== '/content/dam/samsung/levant/tvs/hero-mo.jpg') return 'child image not re-pointed';
+  const uploads = log.filter((l) => l.kind === 'upload').map((l) => l.path).sort();
+  if (uploads.join(',') !== '/content/dam/samsung/levant/tvs/hero-mo.jpg,/content/dam/samsung/levant/tvs/hero-pc.jpg') return `uploads ${uploads}`;
+  if (review.component?.to !== '/root/responsivegrid/feature') return `summary component ${JSON.stringify(review.component)}`;
+  if (review.counts.nodesDeleted || review.props.deleted.length || review.largeRemoval) return 'plans a removal';
+  for (const k of ['text_0', 'text_1']) {
+    if (JSON.stringify(dst.root.responsivegrid[k]) !== JSON.stringify(before.root.responsivegrid[k])) return `${k} changed`;
+  }
+  const own = (p) => JSON.stringify(Object.fromEntries(Object.entries(p).filter(([, v]) => !isNode(v))));
+  if (own(dst) !== own(before)) return 'page properties changed';
+  return JSON.stringify(srcRepo) === srcBefore ? null : 'the source server was written to';
+});
+
+await check('from another server: a name already taken gets the next free one', async () => {
+  const { srcRepo, dstRepo } = twoServers();
+  dstRepo.pages[DST].root.responsivegrid.feature = text('Already here');
+  const { review } = await transferCopy(srcRepo, dstRepo, { source: SRC, dest: DST, component: { from: FROM, into: '/root/responsivegrid' } });
+  const g = dstRepo.pages[DST].root.responsivegrid;
+  if (review.component?.name !== 'feature_copy') return JSON.stringify(review.component);
+  if (g.feature.headlineText !== 'Already here') return 'the existing one was overwritten';
+  return kids(dstRepo.pages[DST]).at(-1) === 'feature_copy' ? null : `order is ${kids(dstRepo.pages[DST])}`;
+});
+
+await check('from another server: a destination page that is not there is refused, and nothing is written', async () => {
+  const { srcRepo, dstRepo } = twoServers();
+  delete dstRepo.pages[DST];
+  const before = JSON.stringify(dstRepo);
+  const why = await refusal(() => transferCopy(srcRepo, dstRepo, { source: SRC, dest: DST, component: { from: FROM, into: '/root/responsivegrid' } }));
+  if (!why || !/(not there|does not exist)/.test(why)) return `said: ${why}`;
+  return JSON.stringify(dstRepo) === before ? null : 'something was written';
+});
+
+await check('from another server: a component not on the source is refused', async () => {
+  const { srcRepo, dstRepo } = twoServers();
+  const why = await refusal(() => transferCopy(srcRepo, dstRepo, { source: SRC, dest: DST, component: { from: '/root/responsivegrid/gone', into: '/root/responsivegrid' } }));
+  return why && /not on the source/.test(why) ? null : `said: ${why}`;
+});
 
 if (failed) console.log(`\n${failed} copy-a-component check(s) FAILED`);

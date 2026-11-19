@@ -46,6 +46,7 @@ import {
   announceSite, homeOf, homeProps, markFailed, readHome, reportSiteSet, siteSummary, siteValues, touchesSite
 } from '../../core/site-values.js';
 import { findOnDelivery, missingReason } from '../../core/dynamic-media.js';
+import { listComponents, scopeToComponent } from '../page-upsert/component.js';
 
 /* ---------------------------------------------------------- safety rails */
 
@@ -183,6 +184,87 @@ function atRealPaths(d, relabelled) {
 }
 
 /* ====================================================================== */
+/*  One component instead of the page                                     */
+/* ====================================================================== */
+
+/**
+ * Copy a component from another server: the same narrowing Copy a component
+ * does on one server (../page-upsert/component.js), split across the two
+ * tabs. The source tab reads only the component and its images; this end
+ * puts it where the author picked, as a new node, and plans against the
+ * destination page as it is - nothing on it is paired, changed or removed.
+ */
+const componentOf = (params) => (params.component && typeof params.component === 'object' ? params.component : null);
+
+/** The component and everything under it, rels as they are on the source page. */
+function onlyComponent(tree, from) {
+  const at = String(from || '');
+  const under = (rel) => rel === at || rel.startsWith(`${at}/`);
+  if (!at || at === '/root' || !tree.tree[at]) throw abort(`The component to copy is not on the source page: ${at || '(none chosen)'}`);
+  const keep = Object.keys(tree.tree).filter(under);
+  return {
+    tree: Object.fromEntries(keep.map((r) => [r, tree.tree[r]])),
+    order: Object.fromEntries(keep.filter((r) => tree.order[r]).map((r) => [r, tree.order[r]]))
+  };
+}
+
+/**
+ * The plan's view for a component copy: the source narrowed and moved to its
+ * new place, the destination page untouched, and no pairing - every node of
+ * the component is new, so there is nothing to pair it with.
+ */
+function scopedPlan(src, destTree, component) {
+  let scoped;
+  try {
+    scoped = scopeToComponent({
+      src: { tree: src.tree, order: src.order },
+      dest: destTree,
+      from: component.from,
+      before: component.before || null,
+      into: component.into || null
+    });
+  } catch (e) {
+    throw abort(e.message);
+  }
+  return {
+    src: { ...src, tree: scoped.src.tree, order: scoped.src.order },
+    alignment: { destToSrc: new Map([['', '']]), srcToDest: new Map([['', '']]), decisions: [], addedAtSource: [], missingAtSource: [] },
+    relabelled: { tree: destTree.tree, order: destTree.order, atDest: (rel) => rel },
+    info: scoped.info
+  };
+}
+
+/**
+ * Reads only. One page's components in page order, for the pickers - each
+ * tab is asked about its own page, since neither can read the other server.
+ */
+async function components({ client, params }) {
+  client.resetCaches();
+  const page = norm(params.page);
+  const what = params.what === 'destination' ? 'destination' : 'source';
+  if (!/^\/content\//.test(page)) throw abort(`The ${what} page must be under /content: ${page}`);
+  const info = await client.inspect(page);
+  client.assertReadable(info, `${what} page`);
+  if (!info.exists) throw abort(`The ${what} page does not exist on ${hereIs()}: ${page}`);
+  if (!info.isPage) throw abort(`The ${what} is not a cq:Page (it is ${info.primaryType}): ${page}`);
+  const t = await readPageTree(client, page);
+  if (!t) throw abort(`The ${what} page has no jcr:content: ${page}`);
+  const list = listComponents(t);
+  const titles = {};
+  for (const rt of new Set(list.map((c) => c.resourceType))) {
+    for (const root of ['/apps', '/libs']) {
+      const props = await client.readProps(`${root}/${rt}`).catch(() => null);
+      if (props?.['jcr:title']) {
+        titles[rt] = String(props['jcr:title']);
+        break;
+      }
+    }
+  }
+  for (const c of list) c.title = titles[c.resourceType] || null;
+  return { page, title: info.title || null, components: list };
+}
+
+/* ====================================================================== */
 /*  Actions that run on the SOURCE instance                               */
 /* ====================================================================== */
 
@@ -230,12 +312,16 @@ async function readPage({ client, settings, report, params }) {
   if (!info.exists) throw abort(`Source page does not exist on that instance: ${source}`);
   if (!info.isPage) throw abort(`Source is not a cq:Page (it is ${info.primaryType}): ${source}`);
 
-  const tree = await readPageTree(client, source);
-  if (!tree) throw abort(`Source page has no jcr:content: ${source}`);
+  const whole = await readPageTree(client, source);
+  if (!whole) throw abort(`Source page has no jcr:content: ${source}`);
 
+  /* A component copy carries the component alone - its images, not the
+     page's. Its own emptiness is checked where it is placed (scopeToComponent). */
+  const component = componentOf(params);
+  const tree = component ? onlyComponent(whole, component.from) : whole;
   const rels = Object.keys(tree.tree);
-  const truncationRisk = rels.length >= TRUNCATION_GUARD;
-  assertHasContent(tree.tree, rels, source);
+  const truncationRisk = Object.keys(whole.tree).length >= TRUNCATION_GUARD;
+  if (!component) assertHasContent(tree.tree, rels, source);
 
   // The DAM root is derived here, where the source's own site token is known.
   const srcSites = resolveSites({
@@ -406,7 +492,7 @@ function planFrom({ settings, params }) {
 async function analyze({ client, settings, report, params }) {
   client.resetCaches();
 
-  const src = params.sourcePage;
+  let src = params.sourcePage;
   if (!src?.tree) throw abort('No source page was supplied. Run the analysis from the panel.');
 
   const { source, dest, opts, sites, ctx } = planFrom({ settings, params });
@@ -435,6 +521,10 @@ async function analyze({ client, settings, report, params }) {
   }
   if (destState === 'error') throw abort(`Could not reach ${dest} on this instance.`);
   const mode = destState === 'yes' ? 'sync' : 'create';
+  const component = componentOf(params);
+  if (component && mode !== 'sync') {
+    throw abort(`The destination page is not there on ${hereIs()}: ${dest}. A component is copied into a page that already exists - copy the whole page to create it.`);
+  }
 
   if (mode === 'create') {
     const parent = await client.inspect(parentOf(dest));
@@ -479,11 +569,24 @@ async function analyze({ client, settings, report, params }) {
 
   /* ---- pair the two trees, then diff them in source coordinates -------- */
   const destTree = mode === 'sync' ? await readPageTree(client, dest) : null;
-  const alignment = destTree
-    ? alignTrees(src.tree, src.order, destTree.tree, destTree.order)
-    : { destToSrc: new Map([['', '']]), decisions: [], addedAtSource: [], missingAtSource: [] };
+  if (component && !destTree) throw abort(`${dest} has no jcr:content on ${hereIs()}. Nothing to copy into.`);
+  /* A component is added, never paired: its nodes are all new (see scopedPlan). */
+  const scoped = component ? scopedPlan(src, destTree, component) : null;
+  if (scoped) {
+    src = scoped.src;
+    opts.deleteExtras = false;
+  }
+  const alignment = scoped
+    ? scoped.alignment
+    : destTree
+      ? alignTrees(src.tree, src.order, destTree.tree, destTree.order)
+      : { destToSrc: new Map([['', '']]), decisions: [], addedAtSource: [], missingAtSource: [] };
 
-  const relabelled = destTree ? relabel(destTree.tree, destTree.order, alignment.destToSrc, Object.keys(src.tree)) : null;
+  const relabelled = scoped
+    ? scoped.relabelled
+    : destTree
+      ? relabel(destTree.tree, destTree.order, alignment.destToSrc, Object.keys(src.tree))
+      : null;
 
   /* ---- which assets have to come across -------------------------------- */
   /* Where an image lands is whatever the reference pointing at it becomes.
@@ -546,6 +649,8 @@ async function analyze({ client, settings, report, params }) {
     assetRe: assetMatcher(src.srcDam)
   });
   atRealPaths(d, relabelled);
+  // Every node of a copied component is new, and is created at its place with :order.
+  if (scoped) d.reorders = [];
 
   /* ---- folders for the assets being uploaded --------------------------- */
   /* Every ancestor below /content/dam, because an image can now land anywhere
@@ -611,6 +716,8 @@ async function analyze({ client, settings, report, params }) {
     mode, source, dest, src, sites, opts, alignment, assetRows, folders, d, blockers, largeRemoval, siteRefs, site,
     binaryRows, maxImageBytes: maxAssetBytes(settings)
   });
+  // One component copied rather than the page: where it came from and where it goes.
+  s.component = scoped?.info || null;
   /* The page here is backed up first, if the operator says so (see
      backupFirst in page-upsert) - but not one this run has just made. A
      backup that cannot be looked at is said, not a reason the copy cannot be
@@ -666,7 +773,12 @@ async function analyze({ client, settings, report, params }) {
   for (const b of blockers) report('fail', b);
   if (!blockers.length) {
     if (largeRemoval) report('warn', `${largeRemoval} It runs only once you confirm the removal.`);
-    report('info', `${mode === 'create' ? 'Will create' : 'Will update'} ${dest}. Nothing has been written.`);
+    report(
+      'info',
+      s.component
+        ? `Will add ${s.component.name} to ${dest}, from ${s.component.from} on ${source}. Nothing has been written.`
+        : `${mode === 'create' ? 'Will create' : 'Will update'} ${dest}. Nothing has been written.`
+    );
   }
 
   return s;
@@ -1004,18 +1116,31 @@ async function apply({ client, settings, report, params }) {
     throw abort(metadataRefusal(s));
   }
 
-  const src = params.sourcePage;
+  let src = params.sourcePage;
   const { dest, opts, ctx, sites } = planFrom({ settings, params });
   const step = (id, state, note) => report('data', 'step', { id, state, note });
-  const site = await siteFor(client, settings, src, sites, opts);
 
   const destTree = await readPageTree(client, dest);
-  const alignment = destTree
-    ? alignTrees(src.tree, src.order, destTree.tree, destTree.order)
-    : { destToSrc: new Map([['', '']]), srcToDest: new Map([['', '']]) };
+  // As in the analysis: a component is narrowed and placed, never paired.
+  const component = componentOf(params);
+  const scoped = component && destTree ? scopedPlan(src, destTree, component) : null;
+  if (scoped) {
+    src = scoped.src;
+    opts.deleteExtras = false;
+  }
+  const site = await siteFor(client, settings, src, sites, opts);
+  const alignment = scoped
+    ? scoped.alignment
+    : destTree
+      ? alignTrees(src.tree, src.order, destTree.tree, destTree.order)
+      : { destToSrc: new Map([['', '']]), srcToDest: new Map([['', '']]) };
   const toDest = destResolver(alignment.srcToDest || new Map([['', '']]));
 
-  const relabelled = destTree ? relabel(destTree.tree, destTree.order, alignment.destToSrc, Object.keys(src.tree)) : null;
+  const relabelled = scoped
+    ? scoped.relabelled
+    : destTree
+      ? relabel(destTree.tree, destTree.order, alignment.destToSrc, Object.keys(src.tree))
+      : null;
   const d = diff({
     srcTree: src.tree,
     srcOrder: src.order,
@@ -1028,6 +1153,7 @@ async function apply({ client, settings, report, params }) {
     assetRe: assetMatcher(src.srcDam)
   });
   atRealPaths(d, relabelled);
+  if (scoped) d.reorders = [];
 
   /* What the template put on a page this run created and the source does
      not have. Removed so the page matches the source - and named, because
@@ -1076,4 +1202,4 @@ async function apply({ client, settings, report, params }) {
   return out;
 }
 
-export const actions = { readPage, readAsset, analyze, prepare, writeAsset, apply };
+export const actions = { readPage, readAsset, components, analyze, prepare, writeAsset, apply };

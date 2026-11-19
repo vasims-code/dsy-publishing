@@ -16,9 +16,9 @@ export default {
 
   description:
     'Pick a component on the source page and where it goes on the destination - above another component, ' +
-    'or at the end of a container. Between two sites its links and image references are re-pointed and ' +
-    'missing images uploaded; on the same site it is copied as it is. Nothing is written until you review ' +
-    'what it found and confirm.',
+    'or at the end of a container - on this server, or from another one. Between two sites its links and ' +
+    'image references are re-pointed and missing images uploaded; on the same site it is copied as it is. ' +
+    'Nothing is written until you review what it found and confirm.',
 
   fields: [
     {

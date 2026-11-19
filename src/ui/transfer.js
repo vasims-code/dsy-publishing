@@ -32,13 +32,35 @@ async function endpoints({ sourceOrigin, destOrigin, settings }) {
   };
 }
 
-/** What the source tab reads: the page, and its site's home page. */
-const readParams = (p) => ({ source: p.source, srcSite: p.srcSite });
+/** What the source tab reads: the page, and its site's home page - or, for a component copy, the component alone. */
+const readParams = (p) => ({ source: p.source, srcSite: p.srcSite, ...(p.component ? { component: p.component } : {}) });
 
 const ok = (res, what) => {
   if (!res?.ok) throw new Error(res?.error || `${what} did not answer.`);
   return res.result;
 };
+
+/**
+ * Copy a component from another server: each page's components for the two
+ * pickers, each read by the tab on its own server. Reads only.
+ */
+export async function components({ params, settings, onReport }) {
+  const { srcTab, dstTab } = await endpoints({ ...params, settings });
+  const runId = newRunId();
+  try {
+    const source = ok(
+      await sendOne({ featureId: FEATURE, action: 'components', params: { page: params.source }, settings, tabId: srcTab, runId, onReport }),
+      'The source tab'
+    );
+    const dest = ok(
+      await sendOne({ featureId: FEATURE, action: 'components', params: { page: params.dest, what: 'destination' }, settings, tabId: dstTab, runId, onReport }),
+      'The destination tab'
+    );
+    return { source, dest };
+  } finally {
+    await finish(runId, [srcTab, dstTab]);
+  }
+}
 
 /**
  * Read the source page on its own instance, then plan against the
