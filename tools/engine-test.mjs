@@ -699,6 +699,87 @@ for (const [limit, carried, byHand] of [[25, 1, 1], [100, 2, 0]]) {
 }
 console.log('  ok   an image over the limit is skipped, named, and never stops the page');
 
+/* -------------------------- images named by their Dynamic Media URL */
+
+console.log('');
+console.log('--- images named by images.samsung.com URLs, across servers ---');
+
+{
+  /* One image is in the source DAM, read from there; the other is only on
+     Dynamic Media and is downloaded from it - both uploaded on the other
+     server, and every URL re-pointed at the destination site. */
+  const DM = 'https://images.samsung.com/is/image/samsung/assets/uk/a';
+  const body = `<picture><source srcset="${DM}/in-dam.jpg?imbypass=true&imwidth=1080" /><img src="${DM}/gone.jpg?imbypass=true" alt="x" /></picture>`;
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => ({ ok: /\/gone\.jpg$/.test(url), status: /\/gone\.jpg$/.test(url) ? 200 : 404 });
+  const client = () => {
+    const c = fakeClient();
+    c.readTree = async (path) => {
+      if (path === `${SRC_PAGE}/jcr:content`) {
+        return {
+          ...structuredClone(SOURCE_JSON),
+          root: {
+            'jcr:primaryType': 'nt:unstructured',
+            responsivegrid: {
+              'jcr:primaryType': 'nt:unstructured',
+              static: {
+                'jcr:primaryType': 'nt:unstructured',
+                'sling:resourceType': 'samsung/components/content/consumer/global/common/cm-g-static-content',
+                bodyHtml: body
+              }
+            }
+          }
+        };
+      }
+      if (/\/content\/samsung\/[a-z]+\/jcr:content$/.test(path)) return { 'jcr:title': 'Samsung UK' };
+      return null;
+    };
+    c.probe = async (path) => {
+      if (path === SRC_PAGE) return 'yes';
+      if (path === DEST_PAGE) return 'no';
+      if (path === parentOf(DEST_PAGE)) return 'yes';
+      if (path === '/content/dam/samsung/uk/a/in-dam.jpg') return 'yes';
+      if (/^\/(apps|libs|conf)\//.test(path)) return 'yes';
+      return 'no';
+    };
+    return c;
+  };
+  let why = null;
+  try {
+    const page = await actions.readPage({ client: client(), settings, report, params: { source: SRC_PAGE } });
+    const plan = await actions.analyze({ client: client(), settings, report, params: { ...params, sourcePage: page } });
+    const rows = (plan.uploads || []).map((u) => `${u.from} -> ${u.to}${u.via ? ` via ${u.via}` : ''}`).sort();
+    const want = [
+      `/content/dam/samsung/uk/a/gone.jpg -> /content/dam/samsung/levant/a/gone.jpg via ${DM}/gone.jpg`,
+      '/content/dam/samsung/uk/a/in-dam.jpg -> /content/dam/samsung/levant/a/in-dam.jpg'
+    ];
+    if (JSON.stringify(rows) !== JSON.stringify(want)) why = `uploads ${JSON.stringify(rows)}`;
+    /* What the run sends for bodyHtml - the review shortens long values, so it is not the place to look. */
+    const sent = [];
+    const c = client();
+    c.writeTree = async (root, pairs) => {
+      for (const [k, v] of pairs) if (k.endsWith('/bodyHtml')) sent.push(v);
+      return { success: true, http: 200, effective: 200, changes: ['modified('] };
+    };
+    c.readTree = ((read) => async (path) => (path === `${DEST_PAGE}/jcr:content` ? { root: { responsivegrid: { static: { bodyHtml: sent.at(-1) } } } } : read(path)))(c.readTree);
+    try {
+      await actions.apply({ client: c, settings, report, params: { ...params, sourcePage: page, pageCreated: true, backupFirst: false, removalsAck: { fingerprint: removalsFingerprint(plan) } } });
+    } catch (e) {
+      // The fake destination is thin, so the read-back may complain; what was sent is what is checked.
+      if (!sent.length) throw e;
+    }
+    const want2 = body.split('/assets/uk/').join('/assets/levant/');
+    if (!why && sent.at(-1) !== want2) why = `bodyHtml sent: ${JSON.stringify(sent.at(-1))}`;
+  } catch (e) {
+    why = `threw: ${e.message}`;
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  console.log(`  ${why ? 'FAIL' : 'ok  '} one read from the DAM, one downloaded from Dynamic Media, both re-pointed${why ? ` - ${why}` : ''}`);
+  if (why) process.exitCode = 1;
+}
+
+
 
 /* ------------------------------------ the page-properties box, both ways */
 
@@ -805,6 +886,7 @@ await import('./engine-test-backup-versions.mjs');
 await import('./link-fixer-test.mjs');
 await import('./broken-links-test.mjs');
 await import('./site-code-fixer-test.mjs');
+await import('./image-site-fixer-test.mjs');
 
 /* Copy a page's refusals, read-back and page-properties box, on a small
    in-memory AEM of its own - the shapes that once got past them. */

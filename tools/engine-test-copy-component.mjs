@@ -102,8 +102,8 @@ function client(repo, log = []) {
       (repo.dam ||= []).push(path);
       return ok;
     },
-    async readBytes(path) {
-      log.push({ kind: 'read', path });
+    async readBytes(path, opts = {}) {
+      log.push({ kind: 'read', path, url: opts.url || null });
       return { bytes: new Uint8Array([1, 2, 3]), mime: 'image/jpeg', size: 3 };
     },
     async createAsset({ folder, fileName }) {
@@ -238,6 +238,67 @@ await check('between sites: added above the chosen component, links and images r
   if (own(dst) !== own(before)) return 'page properties changed';
   if (dst.root.responsivegrid.text_0.ctaUrl !== '/levant/a/') return "the destination's own link moved";
   return null;
+});
+
+/* The fault of 2026-11-19: a static content component from /lb to /iq_ku named its
+   images by their Dynamic Media URLs, which nothing read as images - none was
+   uploaded and every URL still named /lb. */
+await check('images named by their Dynamic Media URLs are uploaded and re-pointed', async () => {
+  const LB = '/content/samsung/lb/apps/samsung-health';
+  const IQ = '/content/samsung/iq_ku/apps/samsung-health';
+  const dm = 'https://images.samsung.com/is/image/samsung/assets/lb/apps/samsung-health/27_07';
+  const body =
+    '<picture class="bg">\r\n' +
+    `  <source media="(min-width: 1081px)" srcset="${dm}/mindful1081.jpg?imbypass=true" />\r\n` +
+    `  <source media="(min-width: 768px)" srcset="${dm}/mindful768.jpg?imbypass=true&imwidth=1080" />\r\n` +
+    `  <img src="${dm}/mindfulfull.jpg?imbypass=true" alt="A person" />\r\n</picture>\r\n` +
+    '<a href="https://shealth.samsung.com/deepLink?sc_id=mood">Try now</a>';
+  const repo = {
+    pages: {
+      [LB]: page({ cm_g_static_content__1: { 'jcr:primaryType': 'nt:unstructured', 'sling:resourceType': 'samsung/components/content/consumer/global/common/cm-g-static-content', bodyHtml: body } }),
+      [IQ]: page({ text_0: text('First') }),
+      '/content/samsung/lb': page({}),
+      '/content/samsung/iq_ku': page({})
+    },
+    // mindfulfull.jpg is not in the DAM: only images.samsung.com still has it.
+    dam: ['mindful1081.jpg', 'mindful768.jpg'].map((f) => `/content/dam/samsung/lb/apps/samsung-health/27_07/${f}`).concat('/content/dam/samsung/iq_ku')
+  };
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => ({ ok: String(url) === `${dm}/mindfulfull.jpg`, status: String(url) === `${dm}/mindfulfull.jpg` ? 200 : 404 });
+  let log;
+  try {
+    ({ log } = await copy(repo, { source: LB, dest: IQ, component: { from: '/root/responsivegrid/cm_g_static_content__1', into: '/root/responsivegrid' } }));
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  const downloaded = log.filter((l) => l.kind === 'read' && l.url).map((l) => l.url);
+  if (downloaded.join() !== `${dm}/mindfulfull.jpg`) return `downloaded from Dynamic Media: ${downloaded.join() || 'nothing'}`;
+  const got = repo.pages[IQ].root.responsivegrid.cm_g_static_content__1?.bodyHtml || '';
+  if (got.includes('/assets/lb/')) return `still names /lb: ${got.match(/\S*assets\/lb\/\S*/)[0]}`;
+  const want = body.split('/assets/lb/').join('/assets/iq_ku/');
+  if (got !== want) return `bodyHtml is ${JSON.stringify(got)}`;
+  const uploads = log.filter((l) => l.kind === 'upload').map((l) => l.path.split('/').pop()).sort().join(',');
+  if (uploads !== 'mindful1081.jpg,mindful768.jpg,mindfulfull.jpg') return `uploads ${uploads}`;
+  if (!log.some((l) => l.kind === 'upload' && l.path === '/content/dam/samsung/iq_ku/apps/samsung-health/27_07/mindfulfull.jpg')) return 'uploaded to the wrong folder';
+  return null;
+});
+
+/* Copy a page on this server goes through the same plan - the whole page this time. */
+await check('Copy a page (this server): Dynamic Media URLs on the page are uploaded and re-pointed', async () => {
+  const LB = '/content/samsung/lb/apps/samsung-health';
+  const IQ = '/content/samsung/iq_ku/apps/samsung-health';
+  const dm = 'https://images.samsung.com/is/image/samsung/assets/lb/apps/samsung-health/27_07';
+  const body = `<picture><source srcset="${dm}/a.jpg?imbypass=true" /><img src="${dm}/b.jpg?imbypass=true" alt="x" /></picture>`;
+  const sc = { 'jcr:primaryType': 'nt:unstructured', 'sling:resourceType': 'samsung/components/content/consumer/global/common/cm-g-static-content', bodyHtml: body };
+  const repo = {
+    pages: { [LB]: page({ sc }), [IQ]: page({}), '/content/samsung/lb': page({}), '/content/samsung/iq_ku': page({}) },
+    dam: ['/content/dam/samsung/lb/apps/samsung-health/27_07/a.jpg', '/content/dam/samsung/lb/apps/samsung-health/27_07/b.jpg', '/content/dam/samsung/iq_ku']
+  };
+  const { log } = await copy(repo, { source: LB, dest: IQ, metadataAck: true });
+  const got = repo.pages[IQ].root.responsivegrid.sc?.bodyHtml;
+  if (got !== body.split('/assets/lb/').join('/assets/iq_ku/')) return `bodyHtml ${JSON.stringify(got)}`;
+  const uploads = log.filter((l) => l.kind === 'upload').map((l) => l.path).sort().join(',');
+  return uploads === '/content/dam/samsung/iq_ku/apps/samsung-health/27_07/a.jpg,/content/dam/samsung/iq_ku/apps/samsung-health/27_07/b.jpg' ? null : `uploads ${uploads}`;
 });
 
 await check('same site: copied as it is, nothing re-pointed or uploaded', async () => {

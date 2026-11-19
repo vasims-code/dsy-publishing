@@ -4,8 +4,8 @@
  * The home screen names six tools; the engine has ten features, because three
  * of the tools ask one more question before they start. "Copy a page" covers
  * copying within a server and from another one; "Copy deck" covers the export
- * and the import; "Links" covers the three tools that work on the links of a
- * page. The chooser screens hold that question, so the home screen stays one
+ * and the import; "Links" covers the four tools that work on the links and
+ * image paths of a page. The chooser screens hold that question, so the home screen stays one
  * row a tool however many features sit behind them.
  *
  * The order here is the order on the home screen - the user chose it.
@@ -40,9 +40,9 @@ export const TOOLS = [
     id: 'links',
     icon: 'link',
     title: 'Links',
-    summary: 'Find broken links, or fix how links are written',
+    summary: 'Find broken links, or fix how links and image paths are written',
     does: 'read-write',
-    features: ['broken-links', 'link-fixer', 'site-code-fixer']
+    features: ['broken-links', 'link-fixer', 'site-code-fixer', 'image-site-fixer']
   },
   {
     id: 'copy-deck',

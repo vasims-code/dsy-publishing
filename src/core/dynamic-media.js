@@ -34,6 +34,26 @@ export function deliveryUrls(damPath) {
 }
 
 /**
+ * The delivery hosts' asset folder as a pattern, scheme optional. Rich text
+ * often names an image this way instead of by its DAM path - a static content
+ * component's <picture> does - and the copy has to see it as the DAM image it
+ * is, or the image is neither uploaded nor re-pointed at the destination site.
+ */
+const DELIVERY_ASSETS = '(?:https?:)?\\/\\/(?:stg-)?images\\.samsung\\.com\\/is\\/image\\/samsung\\/assets';
+
+/** The pattern for DAM_ROOT's delivery form, or null for a DAM root it does not map. */
+export function deliveryRootPattern(damRoot) {
+  return `${damRoot}/` === DAM_ROOT ? DELIVERY_ASSETS : null;
+}
+
+/** The same text with every delivery URL written as the DAM path it serves. */
+export function damForm(s) {
+  return typeof s === 'string' && s.includes('/is/image/samsung/assets/')
+    ? s.replace(new RegExp(`${DELIVERY_ASSETS}(?=\\/)`, 'g'), DAM_ROOT.slice(0, -1))
+    : s;
+}
+
+/**
  * Which delivery hosts still serve the image.
  *
  *   { checked: true,  found: [{ name, url }, ...] }   found may be empty

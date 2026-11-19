@@ -105,7 +105,7 @@ tools/                 build-zip.py, check.py. Not shipped.
 | `screens/*.js` | one file per tool |
 | `options.html` / `options.js` | the settings page |
 
-### Seven tools over eleven features
+### Seven tools over twelve features
 
 `tools.js` is where that mapping lives. Three tools ask one more question
 before they start, so the home screen stays seven rows long:
@@ -116,7 +116,7 @@ before they start, so the home screen stays seven rows long:
 | Copy a component | `component-copy` | |
 | Backup | `page-copy` | |
 | Copy deck | `copy-deck`, `copy-deck-import` | Export, or import |
-| Links | `broken-links`, `link-fixer`, `site-code-fixer` | Which of the three |
+| Links | `broken-links`, `link-fixer`, `site-code-fixer`, `image-site-fixer` | Which of the four |
 | Arabic flipping fixer | `arabic-fixer` | |
 | Versions | `page-versions` | |
 
@@ -133,6 +133,22 @@ the page's own site, changing only the site code. A code counts as a site only
 when AEM has a page at `/content/<brand>/<code>`, and each corrected link's page
 is looked up first: one this site does not have is flagged and left unticked.
 Page properties (canonical, hreflang) are not scanned.
+
+The Image Site Code Fixer (`image-site-fixer`, 1.5.0) does the same for
+images: it lists every image in the page's content that sits in another DAM
+folder - `/content/dam/samsung/lb/...` or
+`images.samsung.com/is/image/samsung/assets/lb/...` on an `/iq_ku` page - and
+for the ticked ones uploads each to the page's own folder at the same path,
+then re-points every reference in the form it was written. Upload, never a
+repository copy: it is Copy a page's own `uploadAsset`, so Dynamic Media
+processes the image and gives it its own address. An image gone from the
+source DAM is taken from images.samsung.com; one that is already in the
+folder is only re-pointed; one found nowhere has no box. Another site's
+folder is ticked for you, a shared folder (`/global`) and an inherited
+component are not. The page's DAM folder is the site code unless the form
+names another (`/ae` for `/ae_ar`). Images are uploaded and found before any
+property changes.
+`tools/image-site-fixer-test.mjs` runs it against an in-memory AEM.
 
 ### Copy a component
 
@@ -273,6 +289,16 @@ reaches Scene7, and the published page shows nothing. An image gone from the
 source DAM but still served by Dynamic Media is listed under *to do by hand*
 with its live and staging delivery URLs (`core/dynamic-media.js`), because that
 copy is the only place left to get it from.
+
+An image can also be *named* by its delivery URL - a static content
+component's `<picture>` writes `images.samsung.com/is/image/samsung/assets/lb/...`
+rather than `/content/dam/samsung/lb/...`. Until 1.4.12 nothing read that as an
+image, so a copy from /lb to /iq_ku uploaded none and left every URL naming /lb.
+`damForm` now reads it as the DAM path it serves: the image is uploaded like
+any other and the URL re-pointed at the destination site, staying a URL.
+Not yet confirmed on a server: AEM's publish-with-references is not expected
+to find these images, since it looks for `/content/dam` paths, so check they
+are published before trusting the live page.
 
 **The fault of 2026-11-01, and the two floors under it.** A cross-server copy
 left the destination's components in place with every property gone - the page

@@ -438,6 +438,89 @@ test('Site Code Link Fixer · a {site_code} placeholder is listed unticked, and 
   );
 });
 
+/* ============================================== Image Site Code Fixer */
+
+/* Shaped like the image-site-fixer worker's scan result (tools/image-site-fixer-test.mjs
+   runs that worker): an /lb image as an images.samsung.com address, one /lb
+   image only Dynamic Media still has, a shared /global icon, and one lost. */
+const IMG_SCAN = () => {
+  const DM = 'https://images.samsung.com/is/image/samsung/assets';
+  const use = (form, from, to) => ({ node: 'root/responsivegrid/static', prop: 'bodyHtml', index: -1, start: 10, from, to, form, title: 'RC01_Static Content', type: 'cm-g-static-content', liveCopy: false });
+  const img = (folder, site, file, action, extra = {}) => ({
+    src: `/content/dam/samsung/${folder}/apps/samsung-health/${file}`,
+    dest: `/content/dam/samsung/iq_ku/apps/samsung-health/${file}`,
+    folder,
+    site,
+    action,
+    uses: [use('delivery', `${DM}/${folder}/apps/samsung-health/${file}`, `${DM}/iq_ku/apps/samsung-health/${file}`)],
+    ...extra
+  });
+  return {
+    page: '/content/samsung/iq_ku/apps/samsung-health',
+    title: 'Samsung Health',
+    site: 'iq_ku',
+    damRoot: '/content/dam/samsung',
+    folder: 'iq_ku',
+    nodes: 12,
+    images: [
+      img('lb', true, 'mindful1081.jpg', 'upload'),
+      img('lb', true, 'gone.jpg', 'upload-delivery', { via: `${DM}/lb/apps/samsung-health/gone.jpg` }),
+      img('lb', true, 'lost.jpg', 'missing'),
+      img('global', false, 'arrow.svg', 'upload')
+    ],
+    props: [{ node: 'root/responsivegrid/static', prop: 'bodyHtml', expect: '<picture>…</picture>' }],
+    otherFolders: [{ folder: 'lb', site: true, images: 3 }, { folder: 'global', site: false, images: 1 }]
+  };
+};
+
+test('Image Site Code Fixer · another site’s images are ticked, a shared one is not, a lost one has no box', async () => {
+  const mod = await import('/src/ui/screens/image-site-fixer.js');
+  H.tab.reply = async (m) =>
+    m.action === 'scan'
+      ? { ok: true, result: IMG_SCAN() }
+      : { ok: true, result: { done: true, page: IMG_SCAN().page, folder: '/content/dam/samsung/iq_ku', fixed: 2, uploaded: 2, references: 2, remaining: 2, uploadedPaths: ['/content/dam/samsung/iq_ku/apps/samsung-health/gone.jpg'] } };
+  const ctx = await mount(mod, { state: { page: { path: IMG_SCAN().page, title: 'Samsung Health' } } });
+  H.btn(ctx, 'Scan this page').click();
+  await H.until(() => H.shown(ctx).includes('Images from other folders'));
+
+  has(ctx, '/content/dam/samsung/iq_ku', 'the page’s own folder is named');
+  has(ctx, '2 of 3 selected', 'the two /lb images that can be fixed are ticked; the shared one is not');
+  has(ctx, 'Shared folder', 'the /global icon is tagged');
+  has(ctx, 'From images.samsung.com', 'the image the DAM lost is taken from Dynamic Media');
+  has(ctx, 'cannot be fixed', 'the lost image is called out');
+  expect(!ctx.view.querySelector('input[aria-label$="lost.jpg to /iq_ku"]'), 'the lost image has no box to tick');
+  const shared = ctx.view.querySelector('input[aria-label^="Move /content/dam/samsung/global/"]');
+  expect(!!shared && !shared.checked, 'the shared image has an unticked box');
+
+  H.btn(ctx, 'Continue with').click();
+  await H.settle(20);
+  has(ctx, 'Will upload', 'the confirm step says what it uploads');
+  has(ctx, '2 images to /content/dam/samsung/iq_ku', 'and where');
+  hasNot(ctx, 'Publish afterwards', 'no publishing message');
+  has(ctx, 'Writes to AEM', 'it says it writes');
+  H.btn(ctx, 'in AEM').click();
+  const fix = await H.until(() => H.tab.sent.find((m) => m.action === 'fix'));
+  const picks = [...fix.params.picks].sort();
+  expect(
+    JSON.stringify(picks) === JSON.stringify(['/content/dam/samsung/lb/apps/samsung-health/gone.jpg', '/content/dam/samsung/lb/apps/samsung-health/mindful1081.jpg']),
+    `the fix is sent the two ticked images: ${picks}`
+  );
+  expect(fix.params.props?.length === 1 && fix.params.damFolder === 'iq_ku', 'with what the scan read, and the folder');
+  await H.until(() => H.shown(ctx).includes('now in /content/dam/samsung/iq_ku'));
+  has(ctx, 'gone.jpg', 'the result lists what was uploaded');
+  hasNot(ctx, 'Publish the images', 'no publishing message');
+});
+
+test('Links · the image fixer is a fourth card, and says it writes', async () => {
+  const mod = await import('/src/ui/screens/links.js');
+  const ways = mod.ways();
+  const img = ways.find((w) => w.id === 'image-site-fixer');
+  expect(ways.length === 4 && img?.title === 'Fix the site code in images' && img.does === 'write', JSON.stringify(ways));
+  const ctx = await mount(mod);
+  has(ctx, 'Fix the site code in images', 'the card is drawn');
+  has(ctx, 'All four work on one page', 'the note counts four');
+});
+
 /* ================================================================= Backup */
 
 test('Backup · analyze, review the tree, run, done', async () => {
@@ -1615,6 +1698,7 @@ test('the page is opened in AEM at one address, not two', async () => {
 
 const SCREENS = [
   ['link-fixer', (m) => ({ ok: true, result: SCAN() }), 'Scan this page'],
+  ['image-site-fixer', () => ({ ok: true, result: IMG_SCAN() }), 'Scan this page'],
   ['backup', () => ({ ok: true, result: BACKUP() }), 'Analyze paths'],
   ['versions', () => ({ ok: true, result: VERSIONS() }), 'Show versions'],
   ['copy-page', () => ({ ok: true, result: CP() }), 'Analyze'],
@@ -2093,7 +2177,7 @@ test('Shell · a page address with a stray % still draws the panel', async () =>
     const s = await shell({ tabs: [{ id: 1, windowId: 7, active: true, url, title: '100%' }], reply: async () => ({ ok: true }) });
     try {
       expect(s.text().includes('Connected'), `${url}: the panel drew its home screen`);
-      expect(s.text().includes('Find broken links, or fix how links are written'), `${url}: with its tools`);
+      expect(s.text().includes('Find broken links, or fix how links and image paths are written'), `${url}: with its tools`);
       expect(s.text().includes('Copy one component into another page'), `${url}: Copy a component among them`);
     } finally {
       s.done();

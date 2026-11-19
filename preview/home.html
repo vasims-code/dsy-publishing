@@ -264,6 +264,42 @@
       chrome.tabs.sendMessage = async (tabId, msg) => {
         if (msg?.type === 'aemt:session') return { state: 'in', user: 'vshaik' };
         if (msg?.type === 'aemt:release') return { ok: true };
+        /* The Image Site Code Fixer: the samsung-health static content, copied from /lb. */
+        if (msg?.feature === 'image-site-fixer' && msg.action === 'scan') {
+          await new Promise((r) => setTimeout(r, 600));
+          const DM = 'https://images.samsung.com/is/image/samsung/assets';
+          const img = (folder, site, file, action, form = 'delivery', extra = {}) => ({
+            src: `/content/dam/samsung/${folder}/apps/samsung-health/27_07/${file}`,
+            dest: `/content/dam/samsung/iq_ku/apps/samsung-health/27_07/${file}`,
+            folder, site, action, ...extra,
+            uses: [{ node: 'root/responsivegrid/cm_g_static_content__1841274460', prop: 'bodyHtml', index: -1, start: 0, form, title: 'RC01_Static Content', type: 'cm-g-static-content', liveCopy: false,
+              from: form === 'delivery' ? `${DM}/${folder}/apps/samsung-health/27_07/${file}` : `/content/dam/samsung/${folder}/apps/samsung-health/27_07/${file}`, to: '' }]
+          });
+          return { ok: true, result: {
+            page: '/content/samsung/iq_ku/apps/samsung-health', title: 'Samsung Health', site: 'iq_ku', damRoot: '/content/dam/samsung', folder: 'iq_ku', nodes: 48,
+            images: [
+              img('lb', true, 'mindful1081.jpg', 'upload'),
+              img('lb', true, 'mindful768.jpg', 'upload'),
+              img('lb', true, 'mindful361.jpg', 'there'),
+              img('lb', true, 'mindfulfull.jpg', 'upload-delivery', 'delivery', { via: `${DM}/lb/apps/samsung-health/27_07/mindfulfull.jpg` }),
+              img('lb', true, 'mindful360.jpg', 'missing'),
+              img('global', false, 'arrow.svg', 'upload', 'dam')
+            ],
+            props: [{ node: 'root/responsivegrid/cm_g_static_content__1841274460', prop: 'bodyHtml', expect: '' }],
+            otherFolders: [{ folder: 'lb', site: true, images: 5 }, { folder: 'global', site: false, images: 1 }]
+          } };
+        }
+        if (msg?.feature === 'image-site-fixer' && msg.action === 'fix') {
+          const step = (id, state, note) =>
+            window.__report?.({ type: 'aemt:report', runId: msg.runId, level: 'data', message: 'step', data: { id, state, note } });
+          for (const id of ['check-first', 'upload', 'write', 'check']) {
+            step(id, 'running');
+            await new Promise((r) => setTimeout(r, 700));
+            step(id, 'done');
+          }
+          return { ok: true, result: { done: true, page: '/content/samsung/iq_ku/apps/samsung-health', folder: '/content/dam/samsung/iq_ku', fixed: msg.params.picks.length, uploaded: 3, references: 4, remaining: 2,
+            uploadedPaths: ['mindful1081.jpg', 'mindful768.jpg', 'mindfulfull.jpg'].map((f) => `/content/dam/samsung/iq_ku/apps/samsung-health/27_07/${f}`) } };
+        }
         if (msg?.action === 'scan') {
           await new Promise((r) => setTimeout(r, 600));
           // ?clean=1 shows the page where every link is already relative.

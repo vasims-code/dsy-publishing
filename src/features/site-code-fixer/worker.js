@@ -38,13 +38,13 @@ function hostsFrom(settings) {
   return hostList([globalThis.location?.hostname, ...origins]);
 }
 
-function depthOf(settings) {
+export function depthOf(settings) {
   const n = Number(settings?.rootDepth);
   return Number.isInteger(n) && n >= 1 ? n : 3;
 }
 
 /** The page's own site, or a refusal saying why it cannot be told. */
-function siteFor(page, settings) {
+export function siteFor(page, settings) {
   const depth = depthOf(settings);
   const s = siteOfPage(page, depth);
   if (!s) {
@@ -56,7 +56,7 @@ function siteFor(page, settings) {
   return s;
 }
 
-async function readPage(client, path) {
+export async function readPage(client, path) {
   const page = norm(path);
   if (!/^\/content\//.test(page) || page.startsWith('/content/dam/')) throw abort(`The page must be under /content: ${page}`);
   const info = await client.inspect(page);
@@ -68,7 +68,7 @@ async function readPage(client, path) {
   return { page, title: info.title, content };
 }
 
-async function pool(items, n, fn) {
+export async function pool(items, n, fn) {
   const out = new Array(items.length);
   let next = 0;
   await Promise.all(
@@ -102,7 +102,7 @@ async function siteLinks(client, content, ctx) {
 }
 
 /** Each component's name as the editor shows it - the jcr:title of its definition. */
-async function componentTitles(client, types) {
+export async function componentTitles(client, types) {
   const titles = new Map();
   for (const rt of types) {
     if (!rt || rt.startsWith('/')) continue;
@@ -117,13 +117,13 @@ async function componentTitles(client, types) {
   return titles;
 }
 
-function assertWrite(r, what) {
+export function assertWrite(r, what) {
   if (!r.success) throw abort(`${what} failed [HTTP ${r.http} / status ${r.effective}]: ${r.message || '(no message returned)'}`);
   return r;
 }
 
 /** Each property with its TypeHint, so a multi-value property stays one. */
-function pairsFor(writes) {
+export function pairsFor(writes) {
   return writes.map((w) => {
     const name = `./${w.node}/${w.prop}`;
     const values = Array.isArray(w.to) ? w.to : [w.to];
@@ -133,7 +133,7 @@ function pairsFor(writes) {
 }
 
 /** The properties packed into requests under the form limit, a property never split from its TypeHint. */
-function pack(units) {
+export function pack(units) {
   const size = (ps) => new URLSearchParams(ps).toString().length;
   const requests = [];
   let cur = [];

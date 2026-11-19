@@ -18,6 +18,7 @@
  */
 
 import { segs } from './paths.js';
+import { damForm, deliveryRootPattern } from './dynamic-media.js';
 
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -130,12 +131,19 @@ export function buildRules(sites, { images = true, links = true, alsoSites = [],
 
   const hostPathPrefixes = hostPathPrefixesOf(sites);
 
-  const rules = images ? [{ id: 'dam', re: new RegExp(esc(sites.srcDam) + TAIL, 'g'), to: sites.destDam }] : [];
+  /* A DAM folder is named by its path, or by the Dynamic Media URL that serves
+   * it (images.samsung.com/is/image/samsung/assets/<site>/...). Both are
+   * re-pointed, each keeping its own form: planAssets uploads the image either
+   * way, so a URL left naming the source site would show the source's copy. */
+  const delivery = deliveryRootPattern(sites.damRoot);
+  const damRe = (folder) =>
+    new RegExp(`(${esc(sites.damRoot)}${delivery ? `|${delivery}` : ''})\\/${esc(folder)}${TAIL}`, 'g');
+  const rules = images ? [{ id: 'dam', re: damRe(sites.srcSite), to: `$1/${sites.destSite}` }] : [];
   if (images) {
     for (const folder of alsoDam) {
       const root = `${sites.damRoot}/${folder}`;
       if (root === sites.srcDam || root === sites.destDam) continue;
-      rules.push({ id: `dam:${folder}`, re: new RegExp(esc(root) + TAIL, 'g'), to: sites.destDam });
+      rules.push({ id: `dam:${folder}`, re: damRe(folder), to: `$1/${sites.destSite}` });
     }
   }
 
@@ -384,7 +392,8 @@ export function assetsIn(value, re) {
 
   const root = re.root;
   const found = [];
-  for (const s of strings) {
+  // A Dynamic Media URL is read as the DAM path it serves - see damForm.
+  for (const s of strings.map(damForm)) {
     if (root && isWholeRef(s, root)) {
       found.push(normalizeAsset(s.trim()));
       continue;

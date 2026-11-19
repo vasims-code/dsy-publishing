@@ -140,6 +140,13 @@ CHANGED_ON_PURPOSE = {
     # A command meant for another server is refused, so a tab that moved since
     # it was read is never written to.
     'src/content/runtime.js',
+    # An image named by its Dynamic Media URL (images.samsung.com/is/image/
+    # samsung/assets/<site>/...) - as a static content component's <picture>
+    # names it - is read as the DAM image it serves: uploaded to the
+    # destination's DAM and re-pointed at the destination site, in its own form.
+    # (diff.js and page-upsert/worker.js count it as an image, not a link.)
+    'src/core/dynamic-media.js',
+    'src/core/rewrite.js',
 }
 
 

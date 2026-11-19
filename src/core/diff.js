@@ -29,6 +29,7 @@ import {
   typeHint
 } from './rewrite.js';
 import { LOCALE_OWNED, contentHash } from './protocol.js';
+import { damForm } from './dynamic-media.js';
 
 export const byDepth = (a, b) => a.split('/').length - b.split('/').length;
 export const relLabel = (rel) => rel || '(page properties)';
@@ -287,7 +288,8 @@ export function diff({ srcTree, srcOrder, destTree, destOrder, ctx, opts, missin
   const damRoot = ctx.sites?.srcDam;
   const noteLinks = (rel, prop, original) => {
     for (const t of rewriteTokens(original, ctx)) {
-      if (damRoot && t.from.startsWith(damRoot)) continue;
+      // An image named by its Dynamic Media URL is an image too, not a link.
+      if (damRoot && damForm(t.from).startsWith(damRoot)) continue;
       const key = `${t.from}\u0000${t.to}`;
       const seen = linkChanges.get(key);
       if (seen) {

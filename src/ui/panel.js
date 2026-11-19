@@ -407,7 +407,7 @@ function goHome() {
 }
 
 /**
- * The Back button. A tool with a level of its own - Links, whose three tools
+ * The Back button. A tool with a level of its own - Links, whose four tools
  * sit behind a chooser - goes up that level first, by setting `own.onBack`
  * to a function that returns true when it went somewhere. Only from the top
  * of a tool does Back go home.

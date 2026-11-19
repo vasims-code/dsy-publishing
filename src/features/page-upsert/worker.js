@@ -20,7 +20,7 @@
 import { abort } from '../../core/aem-client.js';
 import { listComponents, scopeToComponent } from './component.js';
 import { backupState, takeBackup } from '../page-copy/worker.js';
-import { findOnDelivery, missingReason } from '../../core/dynamic-media.js';
+import { damForm, findOnDelivery, missingReason } from '../../core/dynamic-media.js';
 import {
   LOCALE_OWNED,
   contentHash,
@@ -295,8 +295,9 @@ function choiceCounts(tree, full) {
   for (const props of Object.values(tree)) {
     for (const v of Object.values(props)) {
       const refs = rewriteTokens(v, full);
-      if (refs.some((r) => r.from.startsWith(full.sites.srcDam))) images++;
-      if (refs.some((r) => !r.from.startsWith(full.sites.srcDam))) links++;
+      const image = (r) => damForm(r.from).startsWith(full.sites.srcDam);
+      if (refs.some(image)) images++;
+      if (refs.some((r) => !image(r))) links++;
     }
   }
   return { images, links };
@@ -706,7 +707,7 @@ const mb = (n) => `${(n / 1048576).toFixed(n < 10485760 ? 1 : 0)} MB`;
  * image from Scene7 - shows nothing. The file itself arrives unchanged; its
  * metadata (title, description, tags) does not ride along.
  */
-async function uploadAsset(client, a, progress) {
+export async function uploadAsset(client, a, progress) {
   progress('reading');
   let read;
   try {
