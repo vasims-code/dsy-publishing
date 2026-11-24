@@ -309,19 +309,51 @@ export const LD_TEXT_KEYS = new Set([
   'articleBody', 'reviewBody', 'disambiguatingDescription', 'slogan', 'award'
 ]);
 
+const NOT_JSON = Symbol('not JSON');
+
+/**
+ * A JSON-LD script's value, or NOT_JSON. An answer pasted in from a document
+ * keeps its line breaks, and a raw line break inside a string is not JSON:
+ * JSON.parse refuses the whole script for that one character, and the page's
+ * FAQ schema never reached the sheet. So a control character inside a string
+ * is read as its escape. Nothing else is forgiven - a script broken any other
+ * way is code, and stays a developer's.
+ */
+function parseLd(raw) {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    // Read again below, its strings' line breaks as escapes.
+  }
+  let out = '';
+  let inString = false;
+  for (let i = 0; i < raw.length; i++) {
+    const c = raw[i];
+    if (inString && c === '\\') {
+      out += c + (raw[i + 1] ?? '');
+      i++;
+      continue;
+    }
+    if (c === '"') inString = !inString;
+    out += inString && c < ' ' ? `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}` : c;
+  }
+  try {
+    return JSON.parse(out);
+  } catch {
+    return NOT_JSON;
+  }
+}
+
 /**
  * The text values of one JSON-LD script, each where it is in the stored value
  * to the character - the inside of its quotes - as units of kind 'ld'. Only a
  * string that is a key's value (after a ':'), for a key above, and words: not
  * a link, a path or a date. A script that is not JSON gives none: it is code,
- * and stays a developer's.
+ * and stays a developer's. One whose only fault is a line break inside a
+ * string is JSON here (see parseLd).
  */
 function ldUnits(src, el) {
-  try {
-    JSON.parse(el.raw);
-  } catch {
-    return [];
-  }
+  if (parseLd(el.raw) === NOT_JSON) return [];
   const units = [];
   const toks = scriptTokens(el.raw).filter((t) => t.type === 'str');
   const before = (i) => el.raw.slice(0, i).trimEnd().slice(-1);
@@ -1610,14 +1642,10 @@ function secondReader(old, value, placed) {
  * that changed must be one of the planned translations (`reads`).
  */
 function ldDiffers(was, now, reads) {
-  let a;
-  let b;
-  try {
-    a = JSON.parse(was);
-    b = JSON.parse(now);
-  } catch {
-    return ['Second reader: the structured data (JSON-LD) no longer reads as JSON'];
-  }
+  // Read as the export read it: a line break left inside an untranslated string is still the same JSON.
+  const a = parseLd(was);
+  const b = parseLd(now);
+  if (a === NOT_JSON || b === NOT_JSON) return ['Second reader: the structured data (JSON-LD) no longer reads as JSON'];
   const leaves = (v, path = '', out = []) => {
     if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) leaves(x, `${path}/${k}`, out);
     else out.push([path, v]);

@@ -133,6 +133,14 @@ the page's own site, changing only the site code. A code counts as a site only
 when AEM has a page at `/content/<brand>/<code>`, and each corrected link's page
 is looked up first: one this site does not have is flagged and left unticked.
 Page properties (canonical, hreflang) are not scanned.
+Links inside a script (1.5.5) - a Static Content `footerInclude`, or a
+`<script>` block in markup, including `href: "…"` object properties - are
+found and fixed like the rest, tagged "In a script", with a warning on the
+review, confirm and result steps to check the component still works. Only the
+site code changes, and a site code is letters, digits and underscores, so the
+script's syntax is never touched. A property too big for a form-encoded write
+(a script in Arabic easily is) is sent multipart, unless it holds a lone CR
+or LF, which multipart would turn into CRLF; the read-back judges either way.
 
 The Image Site Code Fixer (`image-site-fixer`, 1.5.0) does the same for
 images: it lists every image in the page's content that sits in another DAM

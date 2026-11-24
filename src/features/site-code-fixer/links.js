@@ -61,9 +61,32 @@ export function hostList(extra = []) {
   return [...out];
 }
 
+/* A value that is JSON, or the schema markup's body without its outer braces. */
+const jsonShaped = (s) => /^\s*[[{]/.test(s) || /^\s*"[^"\\]*"\s*:/.test(s);
+
+/* Words only code uses. A value that is neither markup nor JSON and has one of
+   these is a script - the Static Content footerInclude is one. */
+const SCRIPT_WORDS = /\b(?:function|const|let|var)\s|\b(?:document|window)\.|=>/;
+
+/* A property in a script's object literal: href: "https://…", 'url': '/…'. */
+const SCRIPT_PROP = /(?:^|[\s,{(\[])(["']?)([A-Za-z_$][\w$-]*)\1\s*:\s*(\\?)(["'`])((?:https?:\/\/|\/\/|\/)[^"'`<>\\\s]*)\3\4/g;
+
+/**
+ * The stretches of a string that are script: the whole value when it is one,
+ * or each <script> block in markup. A link there is fixed like any other -
+ * only the site code changes, and a site code is letters, digits and
+ * underscores, so the script's syntax is never touched - but it is marked, so
+ * the author is told to check the component still works afterwards.
+ */
+function scriptRanges(s) {
+  if (!s.trim().startsWith('<') && !jsonShaped(s) && SCRIPT_WORDS.test(s)) return [[0, s.length]];
+  return [...s.matchAll(/<script\b[^>]*>[\s\S]*?(?:<\/script\s*>|$)/gi)].map((m) => [m.index, m.index + m[0].length]);
+}
+
 /**
  * Where links are stored in a string, as { start, url, context }: the whole
- * value, an attribute in markup, or a string in JSON. A path written in the
+ * value, an attribute in markup, a string in JSON, or a string in a script
+ * (context 'script'). A path written in the
  * words of a sentence is not a link and is not touched.
  */
 function urlsIn(s) {
@@ -73,6 +96,8 @@ function urlsIn(s) {
     out.push({ start: s.indexOf(trimmed), url: trimmed, context: 'value' });
     return out;
   }
+  const scripts = scriptRanges(s);
+  const inScript = (at) => scripts.some(([from, to]) => at >= from && at < to);
   // href="/ae_ar/..." and, inside a JSON-escaped value, href=\"/ae_ar/...\".
   for (const m of s.matchAll(/([\w:.-]+)\s*=\s*(\\?)(["'])([^"'<>\\]*)\2\3/g)) {
     if (TEXT_NAMES.test(m[1]) || LIST_ATTRS.test(m[1])) continue;
@@ -81,13 +106,24 @@ function urlsIn(s) {
   }
   /* JSON, or a fragment of it: the schema markup component keeps its body
      without the outer braces - "@type": "Guide", "url": "…" - and adds them itself. */
-  if (/^\s*[[{]/.test(s) || /^\s*"[^"\\]*"\s*:/.test(s)) {
+  if (jsonShaped(s)) {
     for (const m of s.matchAll(/"([^"\\]*)"\s*:\s*"((?:https?:\/\/|\/)[^"\\\s]*)"/g)) {
       if (TEXT_NAMES.test(m[1])) continue;
       out.push({ start: m.index + m[0].length - 1 - m[2].length, url: m[2], context: 'json' });
     }
   }
-  return out;
+  if (!scripts.length) return out;
+  // Object-literal links are looked for only inside a script, so nothing outside one is newly read as a link.
+  const seen = new Set(out.map((u) => u.start));
+  for (const m of s.matchAll(SCRIPT_PROP)) {
+    const start = m.index + m[0].length - m[3].length - 1 - m[5].length;
+    if (TEXT_NAMES.test(m[2]) || seen.has(start) || !inScript(start)) continue;
+    seen.add(start);
+    out.push({ start, url: m[5], context: 'script' });
+  }
+  // Whatever form a link in a script was found in, the author is warned about it.
+  for (const u of out) if (inScript(u.start)) u.context = 'script';
+  return out.sort((a, b) => a.start - b.start);
 }
 
 /**
@@ -169,6 +205,8 @@ export function findInString(s, ctx) {
       at: r.at,
       target: r.target,
       context: u.context,
+      // In a script: fixed like the rest, with a warning to check the component afterwards.
+      inScript: u.context === 'script',
       text: u.context === 'attribute' ? anchorText(s, u.start) : null
     });
   }

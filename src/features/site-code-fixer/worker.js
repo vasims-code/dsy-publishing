@@ -132,9 +132,27 @@ export function pairsFor(writes) {
   });
 }
 
+const formSize = (ps) => new URLSearchParams(ps).toString().length;
+
+/* A lone CR or LF. A multipart body turns each into CRLF on the way out, so a
+   value holding one would not read back as written. */
+const LONE_NEWLINE = /\r(?!\n)|(?<!\r)\n/;
+
+/**
+ * One request's write. Form encoding is the usual; one property that alone is
+ * past the form limit - a Static Content script in Arabic, percent-encoded,
+ * easily is - goes multipart, which has no such limit, as long as its
+ * newlines survive that unchanged. Either way the read-back is the judge.
+ */
+export function writePart(client, target, part) {
+  const big = formSize(part) > FORM_LIMIT;
+  if (big && !part.some(([, v]) => LONE_NEWLINE.test(String(v)))) return client.writeTree(target, part);
+  return client.writeNode(target, part);
+}
+
 /** The properties packed into requests under the form limit, a property never split from its TypeHint. */
 export function pack(units) {
-  const size = (ps) => new URLSearchParams(ps).toString().length;
+  const size = formSize;
   const requests = [];
   let cur = [];
   for (const unit of units) {
@@ -178,6 +196,8 @@ export const actions = {
     const r = { page, title, site, contentRoot, components, nodes, count, otherSites };
     report('data', 'analysis', r);
     if (notSites.length) report('info', `Not sites, so left alone: /${notSites.join(', /')}.`);
+    const scripted = components.reduce((n, c) => n + c.links.filter((l) => l.inScript).length, 0);
+    if (scripted) report('warn', `${plural(scripted, 'link')} inside a script. Check the component still works after fixing.`);
     report(
       'info',
       count
@@ -240,7 +260,8 @@ export const actions = {
         step('check-first', 'failed');
         throw abort(`${p.node} › ${p.prop}: ${e.message}. Nothing has been written - scan the page again.`);
       }
-      writes.push({ node: p.node, prop: p.prop, to, links: p.links });
+      const scripted = p.links.filter((l) => scanned.get(`${p.node}|${p.prop}|${l.index}|${l.start}`)?.inScript).length;
+      writes.push({ node: p.node, prop: p.prop, to, links: p.links, scripted });
     }
     const lockOwner = (await client.readProps(target))?.['jcr:lockOwner'] || null;
     const me = await client.currentUser().catch(() => null);
@@ -260,7 +281,7 @@ export const actions = {
     let sent = 0;
     try {
       for (const part of requests) {
-        const answer = assertWrite(await client.writeNode(target, part), 'Writing the links');
+        const answer = assertWrite(await writePart(client, target, part), 'Writing the links');
         if (answer.effective === 201 || (answer.resultPath && decodeURI(answer.resultPath) !== target)) {
           throw abort(`AEM saved the request, but not into this page (status ${answer.effective} for ${answer.resultPath || '(no path)'})`);
         }
@@ -294,6 +315,10 @@ export const actions = {
     const remaining = after ? (await siteLinks(client, after, ctx)).components.reduce((n, c) => n + c.links.length, 0) : 0;
     step('check', 'done', remaining ? `ticked links on /${site}, ${remaining} left as they were` : `every link on /${site}`);
     report('ok', `Done. ${plural(fixed, 'link')} pointed at /${site} on ${page}`);
+    // Links changed inside a script, and where: the author is asked to check those components still work.
+    const scriptedIn = writes.filter((w) => w.scripted).map((w) => `${w.node} › ${w.prop}`);
+    const scripted = writes.reduce((n, w) => n + w.scripted, 0);
+    if (scripted) report('warn', `${plural(scripted, 'link')} changed inside a script (${scriptedIn.join(', ')}). Open the page and check it still works.`);
 
     return {
       done: true,
@@ -303,6 +328,8 @@ export const actions = {
       fixed,
       left: 0,
       remaining,
+      scripted,
+      scriptedIn,
       title: `${plural(fixed, 'link')} pointed at /${site}`,
       editorUrl: `/editor.html${page}.html`
     };

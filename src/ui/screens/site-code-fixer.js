@@ -51,6 +51,7 @@ function rowsFrom(scan) {
         where: `${c.title || c.type || c.node} · ${link.prop}`,
         liveCopy: !!c.liveCopy,
         placeholder: !!link.placeholder,
+        inScript: !!link.inScript,
         missing: link.exists === 'no',
         unchecked: link.exists !== 'yes' && link.exists !== 'no',
         link
@@ -62,6 +63,20 @@ function rowsFrom(scan) {
 
 /** A row that is never ticked for you and is called out on the review. */
 const flagged = (r) => r.liveCopy || r.placeholder || r.missing || r.unchecked;
+
+/* A link inside a script is ticked like any other - only the site code
+   changes - but the author is warned on every step to check the component. */
+function scriptWarning(n, site, when) {
+  const it = n === 1 ? 'it' : 'they';
+  return notice(
+    'warn',
+    `${plural(n, 'link')} ${n === 1 ? 'is' : 'are'} inside a script`,
+    when === 'done'
+      ? `Only the site code changed, but this tool cannot run the script. Open the page and check the component still works - its links, search and filters.`
+      : `${n === 1 ? 'It is' : 'They are'} marked "In a script" below and will be pointed at /${site} with the rest. Only the site code changes, but this tool cannot run the script, so after the fix open the page and check the component still works. Untick ${n === 1 ? 'it' : 'them'} if ${it} should stay as ${n === 1 ? 'it is' : 'they are'}.`,
+    'warn'
+  );
+}
 
 /** The ticked rows, grouped back into the per-property shape `fix` wants. */
 function picksFrom(rows, ticked) {
@@ -204,6 +219,7 @@ export async function render(ctx) {
   /* --------------------------------------------------------- 2. review */
 
   if (own.phase === 'review') {
+    const scripted = rows.filter((r) => r.inScript);
     const needLook = rows.filter(flagged);
     const tickedCount = own.ticked.size;
     const lookUnticked = needLook.filter((r) => !own.ticked.has(r.key)).length;
@@ -283,6 +299,8 @@ export async function render(ctx) {
         kv('Links found to', (own.scan.otherSites || []).map((o) => `/${o.code} (${o.links})`).join(' · '), true)
       ])
     );
+
+    if (scripted.length) view.append(scriptWarning(scripted.length, site, 'review'));
 
     if (needLook.length) {
       const missingN = needLook.filter((r) => r.missing).length;
@@ -372,6 +390,8 @@ export async function render(ctx) {
     if (front && scanned && front !== scanned) {
       view.append(notice('warn', `The tab in front is on ${front}`, `This writes to ${scanned}, where the page was scanned.`, 'warn'));
     }
+    const scriptedTicked = rows.filter((r) => r.inScript && own.ticked.has(r.key)).length;
+    if (scriptedTicked) view.append(scriptWarning(scriptedTicked, site, 'confirm'));
     view.append(
       label('Check before you confirm'),
       list([
@@ -419,6 +439,7 @@ export async function render(ctx) {
   const added = Math.max(0, (r.remaining || 0) - skipped);
 
   view.append(notice('ok', 'Done', `${plural(fixed, 'link')} now ${fixed === 1 ? 'points' : 'point'} at /${r.site || site}.`, 'check'));
+  if (r.scripted) view.append(scriptWarning(r.scripted, r.site || site, 'done'));
   if (added) {
     view.append(
       notice(
@@ -540,7 +561,7 @@ function linkRow(row, site, ticked, redraw) {
   const box = el('input');
   box.type = 'checkbox';
   box.checked = ticked.has(row.key);
-  box.setAttribute('aria-label', `Point ${link.from} at /${site}`);
+  box.setAttribute('aria-label', `Point ${link.from} at /${site}${row.inScript ? ' (inside a script)' : ''}`);
   box.addEventListener('change', () => {
     if (box.checked) ticked.add(row.key);
     else ticked.delete(row.key);
@@ -550,6 +571,7 @@ function linkRow(row, site, ticked, redraw) {
   const text = el('div', 'link-text');
   const where = el('div', 'link-where');
   where.append(el('span', null, link.text ? `${row.where} · “${link.text}”` : row.where));
+  if (row.inScript) where.append(el('span', 'link-tag', 'In a script'));
   if (row.missing) where.append(el('span', 'link-tag', `Not on /${site}`));
   else if (row.unchecked) where.append(el('span', 'link-tag', 'Not checked'));
   else if (row.placeholder) where.append(el('span', 'link-tag', 'Placeholder'));
