@@ -13,6 +13,7 @@
 import {
   CATEGORIES,
   buildSheet,
+  clientSheet,
   fileName,
   mergeRows,
   selectRows,
@@ -20,7 +21,7 @@ import {
   toHtmlTable,
   toTsv
 } from '../../features/copy-deck/core.js';
-import { toXlsx } from '../../features/copy-deck/xlsx.js';
+import { toClientXlsx, toXlsx } from '../../features/copy-deck/xlsx.js';
 import { PD_CATEGORIES, SKU_PRESETS, selectPdRows } from '../../features/copy-deck/pd.js';
 import { chooseField, loadFields } from '../../features/copy-deck/fields.js';
 import { renderNewFields } from '../../features/copy-deck/new-fields.js';
@@ -494,6 +495,7 @@ export async function render(ctx) {
       note: 'Nothing is written to AEM',
       buttons: [
         button('Download Excel', 'primary', () => save('xlsx')),
+        button('Download client Excel', 'ghost', () => save('client')),
         button('Copy for Excel', 'ghost', copyForExcel),
         button('Download CSV', 'ghost', () => save('csv')),
         button('Change what goes on it', 'link', () => goStep('review'))
@@ -560,6 +562,19 @@ export async function render(ctx) {
     const now = new Date();
     try {
       const sheet = sheetNow(now);
+      if (ext === 'client') {
+        // Source text and Translation only. It cannot be imported itself: its Translation column goes back into the full sheet.
+        const name = fileName(d.page, now, 'xlsx', { client: true });
+        give(toClientXlsx(clientSheet(sheet), { modified: now }), name, XLSX_TYPE);
+        own.said = {
+          tone: 'ok',
+          title: 'Saved the client copy',
+          body: `${name} - Source text and Translation only. Keep the full Excel too: paste the client's Translation column into it, row for row, and import that.`,
+          icon: 'check'
+        };
+        redraw();
+        return;
+      }
       if (ext === 'csv') {
         give(toCsv(sheet), fileName(d.page, now, 'csv'), 'text/csv;charset=utf-8');
       } else {

@@ -125,6 +125,9 @@ CHANGED_ON_PURPOSE = {
     # typed (number, date) cell and data: links; a request AEM never answered
     # is put back too. The export leaves an over-long text off the sheet
     # rather than refusing the whole sheet. (core.js and import/worker.js above.)
+    # The client's copy: Source text and Translation only, one sheet, named
+    # _client (clientSheet, toClientXlsx); file names are site, last path
+    # segment and a short date; the import names the client copy if pasted.
     'src/features/copy-deck/xlsx.js',
     # backupState says 'unavailable' with the reason instead of throwing; the
     # copy is read back for its jcr:content and template; a confirmed removal,

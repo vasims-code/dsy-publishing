@@ -424,6 +424,44 @@ console.log('--- copy deck: words that match what happens (13) ---');
   check(/only that row is used/.test(dup2?.message || ''), 'a repeat whose translation is not used says that', dup2?.message);
 }
 
+console.log('');
+console.log('--- copy deck: the client copy and short file names ---');
+{
+  const at = new Date(2026, 10, 24, 14, 52);
+  check(
+    C.fileName('/content/samsung/levant/india/backup/home-appliances/buying-guide', at) === 'levant_buying-guide_261124-1452.xlsx',
+    'a file is named by site, the page and when',
+    C.fileName('/content/samsung/levant/india/backup/home-appliances/buying-guide', at)
+  );
+  check(C.fileName('/content/samsung/levant/india/backup/home-appliances/buying-guide', at, 'xlsx', { client: true }) === 'levant_buying-guide_261124-1452_client.xlsx', "the client's copy ends in _client");
+  check(C.fileName('/content/samsung/uk', at, 'csv') === 'uk_home_261124-1452.csv', 'a site home page is "home"');
+
+  const content = page();
+  const sheet = exported(content);
+  const client = C.clientSheet(sheet);
+  check(client.columns.join('|') === 'Source text|Translation', 'the client copy has only Source text and Translation');
+  check(
+    client.records.length === sheet.records.length - 1 && client.records.every((r, i) => r[0] === sheet.records[i][5] && r[1] === ''),
+    'its rows are the full sheet\'s, in order, with no #END row'
+  );
+
+  const bytes = X.toClientXlsx(client, { modified: at });
+  const parts = unzip(bytes);
+  check(parts.filter(([n]) => n.startsWith('xl/worksheets/')).length === 1, 'the client workbook has one sheet');
+  const back = await X.readXlsx(bytes);
+  check(back.length === client.records.length + 1 && back[1][0] === client.records[0][0], 'it reads back cell for cell', JSON.stringify(back[1]));
+
+  const alone = C.readSheet(back);
+  check(!alone.ok && /client's copy/.test(alone.problem), "importing the client copy on its own says what to do instead", alone.problem);
+
+  // The client fills Translation; its column is pasted into the full sheet, row for row.
+  const filled = back.map((r, i) => (i === 0 ? r : [r[0], r[0] === 'Great headline' ? 'Grand titre' : '']));
+  const full = gridOf(sheet);
+  filled.slice(1).forEach((r, i) => (full[i + 1][6] = r[1]));
+  const p = plan(content, full);
+  check(p.writes?.some((w) => w.to === 'Grand titre' && rowOf(p, HEAD)), 'the full sheet with the pasted column imports', p.problem);
+}
+
 if (failed) {
   console.log(`\ncopy deck: ${failed} FAILED`);
   process.exitCode = 1;

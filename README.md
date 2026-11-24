@@ -127,6 +127,15 @@ answers are different flows with their own steps, footers and workers -
 the tool's own, unchanged. Links is marked *Reads + writes* on the home
 screen: the broken link finder only reads, and its card says so.
 
+The copy deck's Download step also offers a **client Excel**: one
+sheet, Source text and an empty Translation, row for row with the full sheet
+and nothing else - no hidden columns, guide tab or #END row. It cannot be
+imported on its own (the import says so if tried): the client's Translation
+column is pasted into the full sheet's, which is imported as usual. Files are
+named `<site>_<page>_<yymmdd-hhmm>.xlsx`, the client's ending `_client` - the
+page is only the last segment of its path, since the import reads the page
+from the #meta row and never from the name.
+
 The Site Code Link Fixer lists links in a page's content that point into
 another site - `/ae_ar/...` on an `/sa` page - and re-points the ticked ones at
 the page's own site, changing only the site code. A code counts as a site only

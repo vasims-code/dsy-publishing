@@ -1288,14 +1288,34 @@ export function toHtmlTable(sheet) {
   );
 }
 
-/** copydeck_za_tvs_20260927-1430.xlsx - site and page, then when. */
-export function fileName(pagePath, date = new Date(), ext = 'xlsx') {
+/**
+ * levant_buying-guide_261124-1452.xlsx - site, the page's own name, then when.
+ * Only the last segment of the path: the whole of it made names too long to
+ * read in a folder, and the import never reads the name - the page is in the
+ * sheet's #meta row. The client's copy ends in _client.
+ */
+export function fileName(pagePath, date = new Date(), ext = 'xlsx', { client = false } = {}) {
   const segs = String(pagePath).split('/').filter(Boolean);
   const site = segs[2] || 'page';
-  const page = segs.slice(3).join('-') || 'home';
+  const page = segs.length > 3 ? segs[segs.length - 1] : 'home';
   const pad = (n) => String(n).padStart(2, '0');
-  const stamp = `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}`;
-  return `copydeck_${site}_${page}_${stamp}.${ext}`.replace(/[^\w.-]+/g, '-');
+  const stamp = `${pad(date.getFullYear() % 100)}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}`;
+  return `${site}_${page}_${stamp}${client ? '_client' : ''}.${ext}`.replace(/[^\w.-]+/g, '-');
+}
+
+/** The client's sheet: its two columns, both headed as on the full sheet. */
+export const CLIENT_COLUMNS = ['Source text', 'Translation'];
+
+/**
+ * The sheet the client sees: Source text and an empty Translation, row for row
+ * with the full sheet and in its order, and nothing else - no #meta row. Its
+ * Translation column is pasted back into the full sheet's, which is what the
+ * import reads, so the rows must stay exactly as they are here.
+ */
+export function clientSheet(sheet) {
+  const src = sheet.columns.indexOf('Source text');
+  const records = sheet.records.filter((r) => r[3] !== '#meta').map((r) => [r[src], '']);
+  return { columns: CLIENT_COLUMNS, records };
 }
 
 /** Rows per group, counting only what is shown on the page unless asked otherwise. */
@@ -1520,6 +1540,17 @@ export function readSheet(grid) {
     .slice(0, 10)
     .findIndex((r) => r.some((c) => HEADERS.key.test(cell(c).trim())) && r.some((c) => HEADERS.translation.test(cell(c).trim())));
   if (at === -1) {
+    // The client's two-column copy has no keys: it cannot be imported on its own.
+    const client = grid.slice(0, 10).some((r) => r.some((c) => /^source text$/i.test(cell(c).trim())) && r.some((c) => HEADERS.translation.test(cell(c).trim())));
+    if (client) {
+      return {
+        ok: false,
+        problem:
+          "This is the client's copy - it has no Key column, so DSY cannot tell where each translation goes. Paste its Translation column into the Translation column of the full sheet exported with it, then import that.",
+        rows: [],
+        meta: null
+      };
+    }
     return {
       ok: false,
       problem: 'No header row with Key and Translation columns. Copy the whole sheet, header included (Ctrl+A, then Ctrl+C).',

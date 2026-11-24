@@ -1328,6 +1328,30 @@ test('Copy deck export · read, review the groups, build the sheet', async () =>
   hasNot(ctx, 'too long', 'a sheet that fits says nothing about length');
 });
 
+test('Copy deck export · the client copy is offered, named short, and says how it comes back', async () => {
+  const ctx = await deckReview();
+  H.btn(ctx, 'Build the sheet').click();
+  await H.until(() => H.shown(ctx).includes('sheet is ready'));
+  const name = ctx.view.querySelector('.ready-file-name')?.textContent || '';
+  expect(/^uk_[\w-]+_\d{6}-\d{4}\.xlsx$/.test(name) && !name.startsWith('copydeck_'), `the sheet is named short (${name})`);
+
+  // The download itself is caught: the test page must not save a file.
+  const saved = [];
+  const click = HTMLAnchorElement.prototype.click;
+  HTMLAnchorElement.prototype.click = function () {
+    saved.push(this.download);
+  };
+  try {
+    H.btn(ctx, 'Download client Excel').click();
+    await H.until(() => H.shown(ctx).includes('Saved the client copy'));
+  } finally {
+    HTMLAnchorElement.prototype.click = click;
+  }
+  expect(saved.length === 1 && /_client\.xlsx$/.test(saved[0]), `one file, ending _client.xlsx (${saved.join(', ')})`);
+  has(ctx, 'Source text and Translation only', 'it says what is on it');
+  has(ctx, "paste the client's Translation column into it", 'and how the translations come back');
+});
+
 test('Copy deck export · excluding every component closes the way on', async () => {
   const ctx = await deckReview();
   H.btn(ctx, 'Exclude all').click();

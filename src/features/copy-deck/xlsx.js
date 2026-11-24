@@ -134,6 +134,51 @@ export function toXlsx(sheet, { pagePath = '', exportedAt = '', modified = new D
 }
 
 /**
+ * The client's copy: one sheet, Source text and Translation, and nothing else -
+ * no hidden columns, no guide tab, no #END row. `sheet` is what clientSheet
+ * returns. The Translation column is pasted back into the full sheet, so the
+ * header is frozen but there is no filter: a sort here would shift every row.
+ */
+export function toClientXlsx(sheet, { modified = new Date() } = {}) {
+  assertCellsFit(sheet);
+  const looks = sheet.columns.map((c) => COLUMN_LOOK[c] || DEFAULT_LOOK);
+  const rows = [
+    row(1, sheet.columns.map(() => XF.header), sheet.columns),
+    ...sheet.records.map((rec, i) => row(i + 2, rec.map((_, c) => XF[looks[c].style]), rec))
+  ];
+  const tr = colName(sheet.columns.indexOf('Translation') + 1 || 1);
+  const deck = worksheet({
+    cols: looks.map((l, i) => `<col min="${i + 1}" max="${i + 1}" width="${l.width}" customWidth="1" style="${XF.text}"/>`),
+    rows,
+    dimension: `A1:${colName(sheet.columns.length)}${sheet.records.length + 1}`,
+    view: `<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="${tr}2" sqref="${tr}2"/>`,
+    after: '',
+    selected: true
+  });
+  const one = (s) => s.replace(/<(?:Override|Relationship)\b[^>]*sheet2\.xml"[^>]*\/>/g, '');
+  const files = [
+    ['[Content_Types].xml', one(CONTENT_TYPES)],
+    ['_rels/.rels', ROOT_RELS],
+    ['docProps/app.xml', APP],
+    [
+      'xl/workbook.xml',
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+        '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+        '<bookViews><workbookView activeTab="0"/></bookViews>' +
+        '<sheets><sheet name="Translation" sheetId="1" r:id="rId1"/></sheets>' +
+        '</workbook>'
+    ],
+    ['xl/_rels/workbook.xml.rels', one(WORKBOOK_RELS)],
+    ['xl/styles.xml', STYLES],
+    ['xl/worksheets/sheet1.xml', deck]
+  ];
+  // Nothing of the second sheet may be named: Excel calls a workbook damaged over a part that is not there.
+  for (const [, text] of files) if (text.includes('sheet2')) throw new Error('The client workbook still names a second sheet');
+  return zip(files, modified);
+}
+
+/**
  * The second tab: what a translator needs to know, in their words. A product
  * page's sheet (`pd`) has each text once and goes into PIM, so its rules differ;
  * an ordinary page's has static content, with a rule of its own, and two tips.
