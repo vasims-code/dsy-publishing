@@ -893,6 +893,7 @@ await import('./image-site-fixer-test.mjs');
 await import('./engine-test-copy-page.mjs');
 await import('./engine-test-copy-component.mjs');
 await import('./engine-test-home-backup.mjs');
+await import('./engine-test-ticket-backup.mjs');
 
 /* Copy deck, export and import: the sheet read back every way it comes back,
    planned, and written by the real import worker to an in-memory AEM. */

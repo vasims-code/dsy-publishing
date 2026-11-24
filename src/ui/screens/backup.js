@@ -30,7 +30,7 @@ import {
 import { logBox, makeLog } from '../log.js';
 import { runAction } from '../run.js';
 import { pathRows, tree } from '../tree.js';
-import { HOME_BACKUP, backupPathFor, globalBackupPathFor, isGlobalPage } from '../../core/paths.js';
+import { HOME_BACKUP, backupPathFor, globalBackupPathFor, isGlobalPage, jiraTicket, ticketBackupPath } from '../../core/paths.js';
 
 const STEPS = ['Pick', 'Review', 'Run', 'Done'];
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many || one + 's'}`;
@@ -87,6 +87,9 @@ export async function render(ctx) {
       problem: null,
       busy: null,
       ackRemovals: false,
+      // A backup already there: update it ('update'), or keep it and take one for a Jira ticket ('ticket').
+      choice: 'update',
+      ticket: '',
       steps: {}
     });
   }
@@ -214,11 +217,12 @@ export async function render(ctx) {
         ['folder', 'Goes into the backup folder. Missing pages on the way are created empty.'],
         ['deck', 'Only this page is copied — child pages are not.'],
         ['link', 'Internal links stay exactly as they are.'],
-        ['history', 'If a backup already exists, only the differences are written.']
+        ['history', 'If a backup already exists, you choose: update it, or keep it and take a new one for your Jira ticket.']
       ])
     );
 
-    go = button('Analyze paths', 'primary', doAnalyze, {
+    // Called with no ticket: a click event passed through would be sent as one.
+    go = button('Analyze paths', 'primary', () => doAnalyze(), {
       disabled: !own.source.startsWith('/content/') || !targetOk
     });
     footer.append(
@@ -236,6 +240,94 @@ export async function render(ctx) {
   if (own.phase === 'review') {
     const s = own.summary;
     const exists = s.mode === 'update';
+
+    /* The page's backup is already there - someone else may be working on the
+       page too. Update it, or leave it as it is and take one of your own,
+       under it, named by your Jira ticket. */
+    if (exists && !s.ticket) {
+      view.append(label('A backup of this page is already there'));
+      const option = (value, title, hint) => {
+        const wrap = el('label', 'check-row');
+        const radio = el('input');
+        radio.type = 'radio';
+        radio.name = 'dsy-backup-choice';
+        radio.checked = own.choice === value;
+        radio.setAttribute('aria-label', title);
+        radio.addEventListener('change', () => {
+          own.choice = value;
+          redraw();
+        });
+        const text = el('div', 'check-text');
+        text.append(el('div', 'check-title', title), el('div', 'check-hint', hint));
+        wrap.append(radio, text);
+        return wrap;
+      };
+      view.append(
+        list([
+          option('update', 'Update this backup', `${s.dest} is brought in line with the page.`),
+          option('ticket', 'Keep it, and take a new backup for a Jira ticket', 'This backup stays as it is. Yours goes under it, named by your ticket.')
+        ])
+      );
+
+      if (own.choice === 'ticket') {
+        const field = el('div', 'field');
+        field.append(el('div', 'field-label', 'Jira ticket'));
+        const input = el('input');
+        input.type = 'text';
+        input.value = own.ticket;
+        input.spellcheck = false;
+        input.setAttribute('aria-label', 'Jira ticket');
+        input.placeholder = 'WSC20200056-27758';
+        const hint = el('div', 'field-hint');
+        let check = null;
+        const showTicket = () => {
+          const t = jiraTicket(own.ticket);
+          hint.textContent = t
+            ? `Goes to ${ticketBackupPath(s.dest, t)}, titled "${s.update?.title || nameOf(s.source)} (${t})".`
+            : own.ticket
+              ? 'Type a Jira ticket like WSC20200056-27758: its project, a hyphen, then its number.'
+              : 'The ticket you are working on, like WSC20200056-27758. The same ticket again updates its backup.';
+          if (check) check.disabled = !t;
+        };
+        input.addEventListener('input', () => {
+          own.ticket = input.value;
+          showTicket();
+        });
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && jiraTicket(own.ticket)) doAnalyze(jiraTicket(own.ticket));
+        });
+        field.append(input, hint);
+        view.append(field);
+
+        check = button('Check the ticket backup', 'primary', () => doAnalyze(jiraTicket(own.ticket)), { disabled: !jiraTicket(own.ticket) });
+        showTicket();
+        footer.append(
+          ...footerBar({
+            tag: { kind: 'read', text: 'Read-only' },
+            note: 'Nothing is written yet',
+            buttons: [
+              check,
+              button('Change the page', 'ghost', () => {
+                own.summary = null;
+                goStep('pick');
+              })
+            ]
+          })
+        );
+        return;
+      }
+    }
+
+    if (s.ticket) {
+      view.append(
+        notice(
+          'read',
+          `A backup for ${s.ticket}`,
+          `${exists ? 'Your backup for this ticket is already there, and is brought in line with the page.' : "A new backup, under the page's own backup."} The page's own backup, ${parentPath(s.dest)}, is not touched.`,
+          'history'
+        )
+      );
+    }
 
     view.append(
       s.upToDate
@@ -323,15 +415,22 @@ export async function render(ctx) {
           s.upToDate
             ? button('Nothing to update', 'write', null, { disabled: true })
             : button(
-                heldBack ? 'Tick the box above to continue' : exists ? 'Update the backup' : 'Create the backup',
+                heldBack
+                  ? 'Tick the box above to continue'
+                  : `${exists ? 'Update' : 'Create'} the ${s.ticket ? `${s.ticket} ` : ''}backup`,
                 'write',
                 doRun,
                 { iconName: 'pen', disabled: heldBack }
               ),
-          button('Change the page', 'ghost', () => {
-            own.summary = null;
-            goStep('pick');
-          })
+          s.ticket
+            ? button("Back to the page's backup", 'ghost', () => {
+                own.choice = 'update';
+                doAnalyze();
+              })
+            : button('Change the page', 'ghost', () => {
+                own.summary = null;
+                goStep('pick');
+              })
         ]
       })
     );
@@ -399,7 +498,16 @@ export async function render(ctx) {
   const r = own.result || {};
   const dest = r.dest || own.summary?.dest || '';
 
-  view.append(notice('ok', 'Backup ready', 'The page was copied into the backup folder.', 'check'));
+  view.append(
+    notice(
+      'ok',
+      'Backup ready',
+      own.summary?.ticket
+        ? `The page was copied into its backup for ${own.summary.ticket}. The page's own backup was not touched.`
+        : 'The page was copied into the backup folder.',
+      'check'
+    )
+  );
 
   const made = own.summary?.counts?.create || 0;
   view.append(
@@ -480,6 +588,8 @@ export async function render(ctx) {
   /** The paths, plus the confirmation the run refuses to write without. */
   function runParams() {
     const p = { source: own.source, targetSite: own.targetSite };
+    // The ticket the review was for: the run plans it again, never trusting the review.
+    if (own.summary?.ticket) p.ticket = own.summary.ticket;
     const sync = own.summary?.sync;
     if (sync?.largeRemoval && own.ackRemovals) {
       p.removalsAck = {
@@ -491,7 +601,9 @@ export async function render(ctx) {
     return p;
   }
 
-  async function doAnalyze() {
+  /** Reads only. With a ticket, plans that ticket's backup instead of the page's own. */
+  async function doAnalyze(ticket = null) {
+    if (typeof ticket !== 'string') ticket = null;
     own.log?.clear();
     own.problem = null;
     own.busy = 'analyze';
@@ -500,7 +612,7 @@ export async function render(ctx) {
       own.summary = await runAction({
         featureId: 'page-copy',
         action: 'analyze',
-        params: { source: own.source, targetSite: own.targetSite },
+        params: { source: own.source, targetSite: own.targetSite, ...(ticket ? { ticket } : {}) },
         settings: state.settings,
         tabId: state.tab?.id,
         onReport: (msg) => own.log.onReport(msg)
@@ -510,7 +622,8 @@ export async function render(ctx) {
     } catch (e) {
       own.log?.add('fail', e.message);
       own.problem = e.message;
-      own.phase = 'pick';
+      // A ticket that could not be planned goes back to the choice it was typed on, not to the start.
+      own.phase = ticket && own.summary ? 'review' : 'pick';
     }
     own.busy = null;
     toTop();
@@ -551,9 +664,16 @@ export async function render(ctx) {
   }
 }
 
+/** The page a path sits in. */
+const parentPath = (p) => String(p).replace(/\/[^/]+$/, '');
+/** A page's own name, for a title when the backup has none to show. */
+const nameOf = (p) => String(p).split('/').filter(Boolean).pop() || '';
+
 function reset(own) {
   own.phase = 'pick';
   own.summary = null;
+  own.choice = 'update';
+  own.ticket = '';
   own.result = null;
   own.problem = null;
   own.busy = null;

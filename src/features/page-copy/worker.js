@@ -32,6 +32,7 @@ import {
   norm,
   parentOf,
   segs,
+  ticketBackupPath,
   typedBackupPath
 } from '../../core/paths.js';
 import {
@@ -54,10 +55,13 @@ const hasChanges = (syncSummary) => syncSummary.sections.some((x) => x.id !== 'v
 export function destinationFor(source, settings, params = {}) {
   const { rootDepth, backupFolder } = settings;
   try {
-    if (!isGlobalPage(source, rootDepth)) return backupPathFor(norm(source), rootDepth, backupFolder);
-    return params.editDest === true || params.editDest === 'true'
-      ? typedBackupPath(norm(source), params.dest, rootDepth, backupFolder)
-      : globalBackupPathFor(norm(source), params.targetSite, rootDepth, backupFolder);
+    const main = !isGlobalPage(source, rootDepth)
+      ? backupPathFor(norm(source), rootDepth, backupFolder)
+      : params.editDest === true || params.editDest === 'true'
+        ? typedBackupPath(norm(source), params.dest, rootDepth, backupFolder)
+        : globalBackupPathFor(norm(source), params.targetSite, rootDepth, backupFolder);
+    // A ticket's backup is a child page of the page's own backup, named by the ticket.
+    return params.ticket ? ticketBackupPath(main, params.ticket) : main;
   } catch (e) {
     throw abort(e.message);
   }
@@ -73,6 +77,18 @@ async function buildPlan(client, settings, params) {
   client.assertReadable(srcInfo, 'source page');
   if (!srcInfo.exists) throw abort(`Source page does not exist: ${source}`);
   if (!srcInfo.isPage) throw abort(`Source is not a cq:Page (it is ${srcInfo.primaryType}): ${source}`);
+
+  /* A ticket's backup sits under the page's own backup, so that one must be
+     there: without it, the pages on the way would be made empty and the
+     page's own backup would be a blank page nobody took. */
+  const ticket = params.ticket ? nameOf(dest) : null;
+  if (ticket) {
+    const mainInfo = await client.inspect(parentOf(dest));
+    client.assertReadable(mainInfo, 'backup page');
+    if (!mainInfo.exists || !mainInfo.isPage) {
+      throw abort(`There is no backup of this page at ${parentOf(dest)} yet, so there is nothing to put a ticket's backup under. Take the backup first.`);
+    }
+  }
 
   const destInfo = await client.inspect(dest);
   client.assertReadable(destInfo, 'destination page');
@@ -123,7 +139,8 @@ async function buildPlan(client, settings, params) {
         destPath: st.destPath,
         sourcePath: source,
         template: srcInfo.template,
-        title: srcInfo.title || humanize(st.name),
+        // A ticket's backup says which ticket in its title, so the Sites console tells them apart.
+        title: ticket ? `${srcInfo.title || humanize(nameOf(source))} (${ticket})` : srcInfo.title || humanize(st.name),
         /* AEM's copy cannot rename, so a backup named other than its page -
            a site's home page, backed up as .../backup/home - is made from the
            page's template and then filled with its content (copyRenamed). */
@@ -178,7 +195,7 @@ async function buildPlan(client, settings, params) {
     });
   }
 
-  return { source, dest, mode: sync ? 'update' : 'create', commonSuffix, actions, sync };
+  return { source, dest, ticket, mode: sync ? 'update' : 'create', commonSuffix, actions, sync };
 }
 
 /**
@@ -219,7 +236,9 @@ function summarise(plan) {
         title: a.title,
         template: a.template,
         content: 'full',
-        why: a.rename
+        why: plan.ticket
+          ? `a backup of its own for ${plan.ticket}, under the page's backup - made from the page's template, then filled with all of its content, without its child pages`
+          : a.rename
           ? `the site's home page, backed up as "${nameOf(a.destPath)}" - made from its template, then filled with all of its content, without its child pages`
           : 'the requested page - copied with all of its content, without its child pages'
       };
@@ -254,6 +273,7 @@ function summarise(plan) {
     upToDate,
     source: plan.source,
     dest: plan.dest,
+    ticket: plan.ticket,
     create,
     skip,
     copy,

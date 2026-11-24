@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Digital Samsung Yard For Publishing",
   "short_name": "DSY",
-  "version": "1.5.6",
+  "version": "1.5.7",
   "description": "Operations on AEM author instances, run from a side panel next to the page you are working on.",
   "minimum_chrome_version": "114",
 

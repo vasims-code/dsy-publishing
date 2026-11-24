@@ -585,6 +585,112 @@ test('Backup · a large removal is held until it is confirmed', async () => {
   expect(!H.btn(ctx, 'Tick the box above'), 'once ticked the button changes');
 });
 
+/* A backup already there, as the worker answers for the page's own backup, and for a ticket under it. */
+const BACKUP_THERE = (over = {}) =>
+  BACKUP({
+    mode: 'update',
+    create: [],
+    copy: null,
+    update: { path: '/content/samsung/levant/india/backup/tvs', title: 'TVs' },
+    sync: { counts: {}, props: { deleted: [] } },
+    counts: { create: 0, skip: 1, root: 3 },
+    ...over
+  });
+const TICKET_BACKUP = (over = {}) =>
+  BACKUP({
+    ticket: 'DSY-1234',
+    dest: '/content/samsung/levant/india/backup/tvs/DSY-1234',
+    create: [],
+    skip: [{ path: '/content/samsung/levant/india/backup/tvs' }],
+    copy: { path: '/content/samsung/levant/india/backup/tvs/DSY-1234' },
+    counts: { create: 0, skip: 2, root: 3 },
+    ...over
+  });
+
+test('Backup · a backup already there asks: update it, or take one for a Jira ticket', async () => {
+  const mod = await import('/src/ui/screens/backup.js');
+  H.tab.sent.length = 0;
+  H.tab.reply = async (m) => {
+    if (m.action === 'run') return { ok: true, result: { ...TICKET_BACKUP(), done: true } };
+    return { ok: true, result: m.params.ticket ? TICKET_BACKUP() : BACKUP_THERE() };
+  };
+  const ctx = await mount(mod);
+  H.btn(ctx, 'Analyze paths').click();
+  await H.until(() => H.shown(ctx).includes('Update this backup'));
+
+  expect(!('ticket' in (H.tab.sent.find((m) => m.action === 'analyze')?.params || {})), 'Analyze paths sends no ticket - not even its click event');
+  has(ctx, 'Update this backup', 'updating is offered');
+  has(ctx, 'take a new backup for a Jira ticket', 'and a ticket backup');
+  has(ctx, 'Update the backup', 'updating is what happens unless they choose otherwise');
+  expect(!H.input(ctx, 'Jira ticket'), 'no ticket is asked for until they choose that');
+
+  H.tick(ctx.view.querySelector('input[aria-label^="Keep it"]'), true);
+  await H.until(() => H.input(ctx, 'Jira ticket'));
+  expect(H.btn(ctx, 'Check the ticket backup')?.disabled, 'nothing to check without a ticket');
+  hasNot(ctx, 'Update the backup', 'and nothing is written from here');
+
+  H.setValue(H.input(ctx, 'Jira ticket'), 'DSY 12');
+  has(ctx, 'Type a Jira ticket like WSC20200056-27758', 'a name that is not a ticket is said to be wrong');
+  expect(H.btn(ctx, 'Check the ticket backup')?.disabled, 'and cannot be checked');
+
+  H.setValue(H.input(ctx, 'Jira ticket'), 'dsy-1234');
+  has(ctx, '/content/samsung/levant/india/backup/tvs/DSY-1234', 'where it goes, in capitals, under the backup');
+  has(ctx, '"TVs (DSY-1234)"', 'and its title');
+  expect(!H.btn(ctx, 'Check the ticket backup')?.disabled, 'a ticket can be checked');
+
+  H.btn(ctx, 'Check the ticket backup').click();
+  await H.until(() => H.shown(ctx).includes('A backup for DSY-1234'));
+  const asked = H.tab.sent.filter((m) => m.action === 'analyze').at(-1);
+  expect(asked?.params?.ticket === 'DSY-1234', `the analysis was for the ticket (${asked?.params?.ticket})`);
+  has(ctx, "The page's own backup, /content/samsung/levant/india/backup/tvs, is not touched", 'it says the main backup stays');
+  has(ctx, 'Create the DSY-1234 backup', 'the write button names the ticket');
+
+  H.btn(ctx, 'Create the DSY-1234 backup').click();
+  await H.until(() => H.shown(ctx).includes('Backup ready'));
+  const ran = H.tab.sent.find((m) => m.action === 'run');
+  expect(ran?.params?.ticket === 'DSY-1234', 'the run is for the ticket too');
+  has(ctx, 'its backup for DSY-1234', 'the done step names the ticket');
+});
+
+test('Backup · the same ticket again updates its backup, and the way back is to the page\'s own', async () => {
+  const mod = await import('/src/ui/screens/backup.js');
+  H.tab.sent.length = 0;
+  H.tab.reply = async (m) => ({
+    ok: true,
+    result: m.params.ticket ? TICKET_BACKUP({ mode: 'update', copy: null, update: { path: '/content/samsung/levant/india/backup/tvs/DSY-1234' }, sync: { counts: {}, props: { deleted: [] } } }) : BACKUP_THERE()
+  });
+  const ctx = await mount(mod);
+  H.btn(ctx, 'Analyze paths').click();
+  await H.until(() => H.shown(ctx).includes('Update this backup'));
+  H.tick(ctx.view.querySelector('input[aria-label^="Keep it"]'), true);
+  await H.until(() => H.input(ctx, 'Jira ticket'));
+  H.setValue(H.input(ctx, 'Jira ticket'), 'DSY-1234');
+  H.btn(ctx, 'Check the ticket backup').click();
+  await H.until(() => H.shown(ctx).includes('A backup for DSY-1234'));
+  has(ctx, 'Your backup for this ticket is already there', 'it says this ticket has one');
+  has(ctx, 'Update the DSY-1234 backup', 'and updates it');
+
+  H.btn(ctx, "Back to the page's backup").click();
+  await H.until(() => H.shown(ctx).includes('Update this backup'));
+  expect(!H.tab.sent.filter((m) => m.action === 'analyze').at(-1)?.params?.ticket, 'the page\'s own backup is analysed again, without a ticket');
+  has(ctx, 'Update the backup', 'with updating it chosen');
+});
+
+test('Backup · a ticket that cannot be planned stays on the choice and says why', async () => {
+  const mod = await import('/src/ui/screens/backup.js');
+  H.tab.reply = async (m) => (m.params.ticket ? { ok: false, error: 'There is no backup of this page yet.' } : { ok: true, result: BACKUP_THERE() });
+  const ctx = await mount(mod);
+  H.btn(ctx, 'Analyze paths').click();
+  await H.until(() => H.shown(ctx).includes('Update this backup'));
+  H.tick(ctx.view.querySelector('input[aria-label^="Keep it"]'), true);
+  await H.until(() => H.input(ctx, 'Jira ticket'));
+  H.setValue(H.input(ctx, 'Jira ticket'), 'DSY-1');
+  H.btn(ctx, 'Check the ticket backup').click();
+  await H.until(() => H.shown(ctx).includes('That did not work'));
+  has(ctx, 'There is no backup of this page yet', 'the reason is shown');
+  expect(H.input(ctx, 'Jira ticket')?.value === 'DSY-1', 'on the choice, with the ticket still typed');
+});
+
 /* =============================================================== Versions */
 
 test('Versions · list, restore, done', async () => {
@@ -1124,6 +1230,26 @@ test('Copy a page · the write carries both acknowledgements', async () => {
      a decision someone makes, not what happens by leaving a box alone. */
   expect(write.params.backupFirst === false, 'the backup choice must be sent as given');
   expect('keepSiteValues' in write.params, 'the site values choice must be sent');
+});
+
+test("Copy a page · the backup it updates first is named: the page's own, never a ticket's", async () => {
+  const mod = await import('/src/ui/screens/copy-page.js');
+  const BK = '/content/samsung/lb/india/backup/a';
+  H.tab.reply = async () => ({ ok: true, result: CP({ backup: { page: '/content/samsung/lb/a', backup: BK, state: 'differs', differences: { properties: 1, components: 0 }, reason: null } }) });
+  const ctx = await mount(mod);
+  H.setValue(H.input(ctx, 'Destination page'), '/content/samsung/lb/a');
+  await H.settle(20);
+  H.btn(ctx, 'Analyze').click();
+  await H.until(() => H.shown(ctx).includes('Backup of the destination'), { ms: 4000 });
+  has(ctx, `Updates the page's own backup, ${BK}`, 'the review names the backup page it updates');
+  has(ctx, 'Backups taken for a Jira ticket under it are left alone', 'and says a ticket backup is not it');
+  const box = ctx.view.querySelector('input[aria-label="Update the backup first"]');
+  expect(!!box, 'the box is there');
+  H.tick(box, true);
+  await H.settle(30);
+  H.btn(ctx, 'Continue to copy').click();
+  await H.until(() => H.btn(ctx, 'Copy page'));
+  has(ctx, `Updated first, at ${BK}`, 'the confirm step names it too');
 });
 
 test('Copy a page · a blocker stops it', async () => {

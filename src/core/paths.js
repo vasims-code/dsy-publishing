@@ -125,6 +125,28 @@ export function backupPathFor(source, rootDepth, folder) {
 /** The name a site's home page is backed up under, inside the backup folder. */
 export const HOME_BACKUP = 'home';
 
+/**
+ * A Jira ticket key as a page name - "wsc20200056-27758 " is WSC20200056-27758 -
+ * or null when it is not one. A project key that starts with a letter, then a
+ * hyphen and digits: nothing AEM would
+ * rename, so the page is where the review said it would be.
+ */
+export function jiraTicket(raw) {
+  const t = String(raw ?? '').trim().toUpperCase();
+  return /^[A-Z][A-Z0-9]{0,19}-\d{1,9}$/.test(t) ? t : null;
+}
+
+/**
+ * A second backup of a page that already has one: a child page of that backup,
+ * named by the Jira ticket it is for, so two people on the same page each keep
+ * their own copy - .../india/backup/<path>/<page>/DSY-1234.
+ */
+export function ticketBackupPath(backupPath, ticket) {
+  const t = jiraTicket(ticket);
+  if (!t) throw new Error(`"${String(ticket ?? '').trim()}" is not a Jira ticket - type one like DSY-1234.`);
+  return `${norm(backupPath)}/${t}`;
+}
+
 /** Does the backup folder start right under the site root of these segments? */
 const atBackupFolder = (s, f, rootDepth) => f.every((name, i) => s[rootDepth + i] === name);
 

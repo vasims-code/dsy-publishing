@@ -111,6 +111,8 @@ CHANGED_ON_PURPOSE = {
     # so no path is checked as one page and fetched as another. A site's home
     # page backs up to <site>/<folder>/home (HOME_BACKUP); a real page called
     # "home" right under the site is refused, since it would land on the same.
+    # jiraTicket and ticketBackupPath: a second backup of a page, for a Jira
+    # ticket, is a child page of its backup named by the ticket.
     'src/core/paths.js',
     # A component is named in the deck the way AEM's editor names it on the
     # page - its own jcr:title from /apps, "FT02_Feature Benefit" - instead of
@@ -134,6 +136,8 @@ CHANGED_ON_PURPOSE = {
     # or a backup just saved as a version, is passed to the write's guard.
     # A backup named other than its page (the home page's) is made from the
     # page's template and filled by the sync plan: AEM's copy cannot rename.
+    # A backup for a Jira ticket (params.ticket) goes under the page's own
+    # backup, titled with the ticket, and is refused while that is not there.
     'src/features/page-copy/worker.js',
     # The Link Fixer: a bare host name, alt or title text and author-console
     # links are not links; only samsung.com and the author instances are

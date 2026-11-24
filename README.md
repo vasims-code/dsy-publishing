@@ -366,6 +366,20 @@ put there included; every other backup is still an AEM copy. A real page
 called `home` right under the site root is refused a backup, since it would
 land on the same place. `tools/engine-test-home-backup.mjs` runs it.
 
+**A backup for a Jira ticket.** Two people working on one page used to share
+one backup, and the second to take it overwrote the first's. When a page's
+backup is already there, Backup now asks: update it, or keep it and take a new
+one for a Jira ticket. That one is a child page of the page's backup, named by
+the ticket and titled with it - `.../india/backup/<path>/<page>/DSY-1234`,
+"Buying guide (DSY-1234)" - made the way the home page's backup is. The same
+ticket again updates it. A ticket is letters, a hyphen and digits, in
+capitals (`jiraTicket` in `core/paths.js`), and is refused while the page has
+no backup to put it under. Updating either backup leaves the other alone:
+the sync works on the page's own content, never its child pages. Copy a page
+and Copy a component still take or update only the page's own backup, and
+now name it by path on the review and confirm steps.
+`tools/engine-test-ticket-backup.mjs` runs it.
+
 **The activity log.** Every line a worker reports - what it read, wrote or
 skipped - is kept by `src/ui/log.js` and shown under the run, folded away when
 it went fine and open when it did not. The panel used to listen only for

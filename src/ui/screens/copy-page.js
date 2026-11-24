@@ -659,9 +659,11 @@ export async function render(ctx) {
               own.backupFirst = on;
               redraw();
             },
+            /* Always the page's own backup, never one taken for a Jira ticket
+               under it - said by path, so nobody wonders which one changes. */
             bk.state === 'missing'
-              ? `There is no backup at ${bk.backup}. Taken before anything is written; if it fails, nothing is copied.`
-              : `The backup at ${bk.backup} is not the same as this page. Taken before anything is written; if it fails, nothing is copied.`
+              ? `There is no backup of this page yet. It is taken at ${bk.backup} before anything is written; if that fails, nothing is copied.`
+              : `Updates the page's own backup, ${bk.backup}, which is not the same as this page. Backups taken for a Jira ticket under it are left alone. Done before anything is written; if it fails, nothing is copied.`
           )
         ])
       );
@@ -804,7 +806,12 @@ export async function render(ctx) {
       row('Reads', s.source, true),
       row('Writes to', s.dest, true),
       bk && (bk.state === 'missing' || bk.state === 'differs')
-        ? row('Backup', own.backupFirst ? 'Taken first. If it fails, nothing is copied.' : 'Not taken first')
+        ? row(
+            'Backup',
+            own.backupFirst
+              ? `${bk.state === 'missing' ? 'Taken' : 'Updated'} first, at ${bk.backup}. If it fails, nothing is copied.`
+              : 'Not taken first'
+          )
         : null,
       carried + byHandN
         ? row('Images', `${carried} carried${byHandN ? ` · ${byHandN} by hand` : ''}`)
