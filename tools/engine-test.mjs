@@ -887,6 +887,7 @@ await import('./link-fixer-test.mjs');
 await import('./broken-links-test.mjs');
 await import('./site-code-fixer-test.mjs');
 await import('./image-site-fixer-test.mjs');
+await import('./arabic-fixer-test.mjs');
 
 /* Copy a page's refusals, read-back and page-properties box, on a small
    in-memory AEM of its own - the shapes that once got past them. */

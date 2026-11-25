@@ -157,6 +157,11 @@ CHANGED_ON_PURPOSE = {
     # (diff.js and page-upsert/worker.js count it as an image, not a link.)
     'src/core/dynamic-media.js',
     'src/core/rewrite.js',
+    # A Text Editor keeps its text in descriptionDefaultText and
+    # descriptionHiddenText, which no rule named: the copy deck left it off the
+    # sheet, so the Arabic fixer, which checks only what the copy deck lists,
+    # never saw it either.
+    'src/features/copy-deck/core.js',
 }
 
 

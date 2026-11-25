@@ -104,6 +104,9 @@ const FIELD_RULES = [
   { test: /^(desktop|mobile)?[hH]eadlineText\d*$/, category: 'copy', label: 'Headline' },
   { test: /^subHeadlineText\d*$/, category: 'copy', label: 'Sub-headline' },
   { test: /^description\d*$/, category: 'copy', label: 'Description' },
+  // A Text Editor's column: the text shown, and the rest behind its "more" button.
+  { test: /^descriptionDefaultText$/, category: 'copy', label: 'Description' },
+  { test: /^descriptionHiddenText$/, category: 'copy', label: 'Description (behind "more")' },
   { test: /^(text|desktopText|mobileText)$/, category: 'text', label: 'Text' },
   // A Lineup Compare's spec cells: spec/text1 is the row of categoryList/item0, text2 of item1.
   // Elsewhere text2 is a button's text (a Feature Benefit's second CTA): only here are they specs.
